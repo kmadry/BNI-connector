@@ -36,7 +36,7 @@ function render(c, ctx, logo) {
     </div>
   </header>
   ${off.length ? `<section class="v-sec"><h2>Polecam kontakty <span class="v-count">${off.length}</span></h2><ol class="v-list">${off.map((r, i) => `<li><span class="v-n">${i + 1}</span><div class="v-main"><b>${esc(r.name || '')}</b><small>${[r.company, r.industry].filter(Boolean).map(esc).join(' · ')}</small></div><div class="v-tags">${r.relation ? `<span class="v-badge">${cell(r.relation)}</span>` : ''}${r.scale ? `<span class="v-chip">${esc(r.scale)}</span>` : ''}</div></li>`).join('')}</ol></section>` : ''}
-  ${sou.length ? `<section class="v-sec"><h2>Szukam kontaktów <span class="v-count">${sou.length}</span></h2><ol class="v-list">${sou.map((r, i) => `<li><span class="v-n">${i + 1}</span><div class="v-main"><b>${esc(r.name || '')}</b><small>${[r.company, r.industry].filter(Boolean).map(esc).join(' · ')}</small>${r.why ? `<em>${esc(r.why)}</em>` : ''}</div></li>`).join('')}</ol></section>` : ''}
+  ${sou.length ? `<details class="v-sec v-fold"><summary><h2>Szukam kontaktów <span class="v-count">${sou.length}</span></h2></summary><ol class="v-list">${sou.map((r, i) => `<li><span class="v-n">${i + 1}</span><div class="v-main"><b>${esc(r.name || '')}</b><small>${[r.company, r.industry].filter(Boolean).map(esc).join(' · ')}</small>${r.why ? `<em>${esc(r.why)}</em>` : ''}</div></li>`).join('')}</ol></details>` : ''}
   ${qa.length ? `<section class="v-sec"><h2>8 pytań 1:1</h2>${qa.map((x, i) => `<details><summary><span class="v-n">${i + 1}</span>${esc(x.q)}</summary><p>${esc(x.a)}</p></details>`).join('')}</section>` : ''}
   <footer class="v-foot"><span>Referra</span><span>Wizytówka online</span></footer>`;
   $('#v-save').onclick = () => {

@@ -42,15 +42,16 @@
     <header class="page-head"><div><h1>Wizytówki</h1><p class="sub">Twoje rozszerzone, składane wizytówki z listami TOP 20.</p></div>
       <div class="actions">
         <button class="primary" id="btn-new">+ Nowa wizytówka</button>
-        <button id="btn-demo">Wczytaj przykład</button>
-        <button id="btn-export">Eksport JSON</button>
-        <button id="btn-logo" title="Logo na wizytówkach (domyślnie BNI)">Logo</button>
-        <button id="btn-wipe" class="danger" title="Czyści tylko dane zapisane w tej przeglądarce">Wyczyść dane lokalne</button>
-        <label class="btn">Import JSON<input type="file" id="file-import" accept=".json,application/json" hidden></label>
+        <details class="more"><summary class="btn">Więcej</summary><div class="more-pop">
+          <button id="btn-logo" title="Logo na wizytówkach (domyślnie BNI)">Logo wizytówek</button>
+          <button id="btn-demo">Wczytaj przykład</button>
+          <button id="btn-export">Eksport kopii (JSON)</button>
+          <label class="btn">Import kopii (JSON)<input type="file" id="file-import" accept=".json,application/json" hidden></label>
+          <button id="btn-wipe" class="danger" title="Czyści tylko dane zapisane w tej przeglądarce">Wyczyść dane lokalne</button>
+        </div></details>
       </div>
     </header>
     <div id="card-list" class="grid"></div>
-    <p class="hint">Dane synchronizują się z bazą (status w menu). „Eksport JSON” robi kopię zapasową.</p>
   </section>
 
   <!-- KONTAKTY -->
@@ -59,16 +60,20 @@
       <div class="actions">
         <button class="primary" id="ct-new">+ Nowy kontakt</button>
         <button id="ct-scan">Zeskanuj wizytówkę</button>
-        <label class="btn">Import vCard / CSV<input type="file" id="ct-import" accept=".vcf,.csv,text/vcard,text/csv" hidden></label>
-        <button id="ct-export">Eksport CSV</button>
-        <button id="ct-demo">Wczytaj przykładowe</button>
+        <details class="more"><summary class="btn">Więcej</summary><div class="more-pop">
+          <label class="btn">Import vCard / CSV<input type="file" id="ct-import" accept=".vcf,.csv,text/vcard,text/csv" hidden></label>
+          <button id="ct-export">Eksport CSV</button>
+          <button id="ct-demo">Wczytaj przykładowe</button>
+        </div></details>
       </div>
     </header>
     <div class="toolbar">
-      <input id="ct-search" type="search" placeholder="Szukaj: imię, firma, branża, e-mail, tag…" aria-label="Szukaj kontaktów">
-      <select id="ct-rel" aria-label="Filtr relacji"><option value="">Wszystkie relacje</option><option>Znajomy / Klient</option><option>Znajomy / Partner biznesowy</option></select>
-      <select id="ct-tag" aria-label="Filtr tagu"><option value="">Wszystkie tagi</option></select>
-      <select id="ct-sort" aria-label="Sortowanie"><option value="name">Sortuj: nazwisko</option><option value="company">Sortuj: firma</option><option value="new">Sortuj: najnowsze</option></select>
+      <input id="ct-search" type="search" placeholder="Szukaj kontaktu…" aria-label="Szukaj kontaktów">
+      <details class="more filt"><summary class="btn">Filtry</summary><div class="more-pop">
+        <label>Relacja<select id="ct-rel" aria-label="Filtr relacji"><option value="">Wszystkie</option><option>Znajomy / Klient</option><option>Znajomy / Partner biznesowy</option></select></label>
+        <label>Tag<select id="ct-tag" aria-label="Filtr tagu"><option value="">Wszystkie</option></select></label>
+        <label>Kolejność<select id="ct-sort" aria-label="Sortowanie"><option value="name">Nazwisko</option><option value="company">Firma</option><option value="new">Najnowsze</option></select></label>
+      </div></details>
     </div>
     <div id="ct-list" class="ct-list" aria-live="polite"></div>
     <dialog id="ct-dialog" aria-label="Kontakt"><form method="dialog" id="ct-form" class="ct-form"></form></dialog>
@@ -86,8 +91,7 @@
     <div id="editor-empty" class="hint">Wybierz lub utwórz wizytówkę na zakładce „Wizytówki”.</div>
     <div class="editor-grid">
     <div id="editor" hidden>
-      <fieldset>
-        <legend>Dane (awers wizytówki)</legend>
+      <details class="sect" open><summary>Dane na wizytówce</summary>
         <div class="form">
           <label>Imię i nazwisko <input data-f="name"></label>
           <label>Grupa / organizacja <input data-f="group"></label>
@@ -98,24 +102,21 @@
           <label>E-mail <input data-f="email" type="email"></label>
           <label>Kolor akcentu <input data-f="accent" type="color"></label>
         </div>
-      </fieldset>
+      </details>
 
-      <fieldset>
-        <legend>8 pytań 1:1 (panel z odpowiedziami)</legend>
+      <details class="sect"><summary>8 pytań 1:1</summary>
         <div id="qa"></div>
-      </fieldset>
+      </details>
 
-      <fieldset>
-        <legend>Lista TOP 20 kontaktów biznesowych (które oferuję)</legend>
+      <details class="sect" open><summary>Polecam (lista TOP 20)</summary>
         <div class="tablewrap"><table id="tbl-offered"></table></div>
         <button id="add-offered">+ Wiersz</button>
-      </fieldset>
+      </details>
 
-      <fieldset>
-        <legend>Lista TOP 20 poszukiwanych kontaktów (których szukam)</legend>
+      <details class="sect"><summary>Szukam (lista TOP 20)</summary>
         <div class="tablewrap"><table id="tbl-sought"></table></div>
         <button id="add-sought">+ Wiersz</button>
-      </fieldset>
+      </details>
 
       <div class="bar">
         <button class="primary" id="btn-to-preview">Podgląd →</button>
@@ -132,19 +133,20 @@
   <section id="view-preview" class="view">
     <header class="page-head"><div><h1>Podgląd i druk</h1><p class="sub">Dwustronny pasek 90 × 56 mm z kodem QR.</p></div></header>
     <div class="bar">
-      <select id="preview-card"></select>
-      <select id="preview-layout" title="Układ wydruku">
-        <option value="a4">Podgląd wydruku: A4 (2 kolumny)</option>
-        <option value="strip">Podgląd: pasek (składanka)</option>
+      <select id="preview-card" aria-label="Wizytówka"></select>
+      <select id="preview-layout" title="Układ wydruku" aria-label="Układ podglądu">
+        <option value="a4">Arkusz A4</option>
+        <option value="strip">Pasek (składanka)</option>
       </select>
-      <label class="chk"><input type="checkbox" id="opt-qr" checked> Kod QR</label>
       <button class="primary" id="btn-print">Drukuj / PDF</button>
-      <button data-qr-open>Pokaż kod QR</button>
-      <button id="btn-share">Kopiuj link online</button>
+      <details class="more"><summary class="btn">Więcej</summary><div class="more-pop">
+        <label class="chk"><input type="checkbox" id="opt-qr" checked> Kod QR na okładce</label>
+        <button data-qr-open>Pokaż kod QR</button>
+        <button id="btn-share">Kopiuj link do wizytówki</button>
+        <p class="hint" id="qr-info"></p>
+      </div></details>
     </div>
-    <p class="hint" id="qr-info"></p>
     <div id="sheet" class="sheet"></div>
-    <p class="hint">Panele są ułożone jeden pod drugim w kolejności składania (zakładki harmonijkowej). Drukuj w skali 100%.</p>
   </section>
 
   <!-- POŁĄCZENIA -->

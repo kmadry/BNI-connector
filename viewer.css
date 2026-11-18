@@ -37,3 +37,8 @@ body.viewer-mode .app,body.viewer-mode dialog,body.viewer-mode #toast,body.viewe
 .v-sk{background:var(--surface-2);border:1px solid var(--line)}.v-sk.a{height:220px}.v-sk.b{height:150px}.v-sk.c{height:110px}
 @media (min-width:700px){.v-actions{grid-template-columns:1fr 1fr}}
 @media print{.v-actions{display:none}}
+
+.v-fold>summary{display:flex;justify-content:space-between;align-items:baseline;list-style:none;cursor:pointer}
+.v-fold>summary::-webkit-details-marker{display:none}
+.v-fold>summary::after{content:"+";font:400 26px var(--mono)}.v-fold[open]>summary::after{content:"\2212"}
+.v-sec{margin-top:52px}.v-list li{padding:16px 0}

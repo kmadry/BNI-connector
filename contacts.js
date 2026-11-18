@@ -78,10 +78,11 @@ function openForm(c) {
     `<label>Relacja<select name="relation"><option value="">—</option>${REL.map(r => `<option${c.relation === r ? ' selected' : ''}>${r}</option>`).join('')}</select></label>
      <label>Skala firmy<select name="scale"><option value="">—</option>${SCALE.map(r => `<option${c.scale === r ? ' selected' : ''}>${r}</option>`).join('')}</select></label>
      <label class="wide">Notatki<textarea name="notes" rows="3">${esc(c.notes || '')}</textarea></label></div>
-     <div class="bar"><button class="primary" value="save">Zapisz</button><button value="cancel" formnovalidate>Anuluj</button>${isNew ? '' : '<button class="danger" value="delete" formnovalidate>Usuń</button>'}</div>`;
+     <div class="bar"><button class="primary" value="save">Zapisz</button><button value="cancel" formnovalidate>Anuluj</button>${isNew ? '' : '<button value="add-offered" formnovalidate>Dodaj do „Polecam”</button><button value="add-sought" formnovalidate>Dodaj do „Szukam”</button><button class="danger" value="delete" formnovalidate>Usuń</button>'}</div>`;
   form.onsubmit = ev => {
     const v = ev.submitter && ev.submitter.value;
     if (v === 'delete') { if (!confirm('Usunąć ten kontakt?')) return; const idx = list().findIndex(x => x.id === c.id); const copy = list()[idx]; list().splice(idx, 1); B.save(); render(); renderTray(); snack('Usunięto kontakt', () => { list().push(copy); B.save(); render(); renderTray(); }); return; }
+    if (v === 'add-offered' || v === 'add-sought') { addToCard(c, v === 'add-offered' ? 'offered' : 'sought'); return; }
     if (v !== 'save') return;
     const d = Object.fromEntries(new FormData(form));
     if (!(d.firstName.trim() || d.lastName.trim() || d.company.trim())) { ev.preventDefault(); toast('Podaj imię, nazwisko lub firmę'); form.elements.firstName.focus(); return; }
@@ -192,24 +193,28 @@ function renderTray() {
   tray.hidden = !has; if (!has) return;
   const q = ($('#tray-q') && $('#tray-q').value || '').toLowerCase();
   const all = list().filter(c => matches(c, q)), rows = all.slice(0, 80);
-  tray.innerHTML = `<div class="tray-head"><h3>Magazyn kontaktów</h3><small>${list().length} kontaktów</small></div>
+  tray.innerHTML = `<div class="tray-head"><h3>Magazyn kontaktów</h3><small>${list().length}</small></div>
+    <div class="tray-target" role="radiogroup" aria-label="Dodaję do listy">${[['offered', 'Polecam'], ['sought', 'Szukam']].map(([k, l]) => `<label><input type="radio" name="tray-target" value="${k}"${trayTarget === k ? ' checked' : ''}> ${l}</label>`).join('')}</div>
     <input id="tray-q" type="search" placeholder="Szukaj w magazynie…" value="${esc(q)}" aria-label="Szukaj w magazynie">
-    <p class="hint hint-drag">Chwyć <b>⋮⋮</b> i upuść na wiersz tabeli <b>TOP 20</b>. Możesz też użyć przycisków poniżej (działają z klawiatury).</p><p class="hint hint-tap">Dotknij <b>+ Oferuję</b> lub <b>+ Szukam</b>, aby dodać kontakt do list TOP 20.</p>
-    ${all.length > rows.length ? `<p class="hint">Pokazano ${rows.length} z ${all.length} – zawęź wyszukiwanie.</p>` : ''}<div class="tray-list">${rows.length ? rows.map(c => `<div class="tc" data-id="${esc(c.id)}"><span class="dh" data-drag="${esc(c.id)}" role="button" tabindex="0" aria-label="Przeciągnij ${esc(fullName(c))}" title="Przeciągnij">⋮⋮</span>${avatar(c)}<span class="tc-main"><b>${esc(fullName(c))}</b><small>${esc(c.company || c.industry || '')}</small></span><span class="tc-act"><button class="small" data-add="offered" aria-label="Dodaj ${esc(fullName(c))} do oferowanych" title="Dodaj do TOP 20 oferowanych">+ Oferuję</button><button class="small" data-add="sought" aria-label="Dodaj ${esc(fullName(c))} do poszukiwanych" title="Dodaj do TOP 20 poszukiwanych">+ Szukam</button></span></div>`).join('') : `<div class="empty small"><p>${list().length ? 'Brak wyników.' : 'Magazyn jest pusty.'}</p>${list().length ? '' : '<button class="small primary" data-demo>Wczytaj przykładowe</button> <button class="small" data-goscan>Skanuj</button>'}</div>`}</div>`;
+    <p class="hint hint-drag">Przeciągnij <b>⋮⋮</b> do tabeli albo użyj <b>+</b>.</p><p class="hint hint-tap">Dotknij <b>+</b>, aby dodać do wybranej listy.</p>
+    ${all.length > rows.length ? `<p class="hint">Pokazano ${rows.length} z ${all.length} – zawęź wyszukiwanie.</p>` : ''}
+    <div class="tray-list">${rows.length ? rows.map(c => `<div class="tc" data-id="${esc(c.id)}"><span class="dh" data-drag="${esc(c.id)}" role="button" tabindex="0" aria-label="Przeciągnij ${esc(fullName(c))}" title="Przeciągnij">⋮⋮</span><span class="tc-main"><b>${esc(fullName(c))}</b><small>${esc(c.company || c.industry || '')}</small></span><button class="small tc-add" data-add aria-label="Dodaj ${esc(fullName(c))} do listy" title="Dodaj do wybranej listy">+</button></div>`).join('') : `<div class="empty small"><p>${list().length ? 'Brak wyników.' : 'Magazyn jest pusty.'}</p>${list().length ? '' : '<button class="small primary" data-demo>Wczytaj przykładowe</button> <button class="small" data-goscan>Skanuj</button>'}</div>`}</div>`;
   const ol = $('#tbl-offered') && $('#tbl-offered').closest('.tablewrap'), sl = $('#tbl-sought') && $('#tbl-sought').closest('.tablewrap');
   if (ol) ol.dataset.zone = 'offered'; if (sl) sl.dataset.zone = 'sought';
 }
 $('#ct-tray').addEventListener('keydown', e => { const h = e.target.closest && e.target.closest('.dh'); if (h && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); const b = h.closest('.tc').querySelector('[data-add]'); if (b) b.focus(); } });
+$('#ct-tray').addEventListener('change', e => { if (e.target.name === 'tray-target') trayTarget = e.target.value; });
 $('#ct-tray').addEventListener('input', e => { if (e.target.id === 'tray-q') { const p = e.target.selectionStart; renderTray(); const n = $('#tray-q'); n.focus(); n.setSelectionRange(p, p); } });
 $('#ct-tray').addEventListener('click', e => {
   if (e.target.closest('[data-demo]')) return loadDemo();
   if (e.target.closest('[data-goscan]')) return B.show('scan');
   const b = e.target.closest('[data-add]'); if (!b) return;
-  const c = list().find(x => x.id === b.closest('.tc').dataset.id); if (c) addToCard(c, b.dataset.add);
+  const c = list().find(x => x.id === b.closest('.tc').dataset.id); if (c) addToCard(c, trayTarget);
 });
 
 /* ---------- silnik przeciągania (pointer events: mysz + dotyk) ---------- */
 let drag = null;
+let trayTarget = 'offered';
 function ghostLabel(src) { return src.kind === 'contact' ? fullName(list().find(c => c.id === src.id) || {}) : `Wiersz ${src.i + 1}`; }
 document.addEventListener('pointerdown', e => {
   const h = e.target.closest('[data-drag],[data-grip]'); if (!h || e.button > 0) return;
@@ -221,7 +226,7 @@ document.addEventListener('pointermove', e => {
   if (!drag || e.pointerId !== drag.pid) return;
   if (!drag.on) {
     if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 5) return;
-    drag.on = true; document.body.classList.add('dragging');
+    drag.on = true; document.body.classList.add('dragging'); $$('details.sect').forEach(d => { if (d.querySelector('table.edit')) d.open = true; });
     const g = document.createElement('div'); g.className = 'drag-ghost'; g.textContent = ghostLabel(drag.src); document.body.appendChild(g); drag.g = g;
   }
   e.preventDefault();
@@ -304,6 +309,12 @@ document.addEventListener('keydown', e => {
 /* ---------- pasek nawigacji: ukryj przycisk motywu podczas przewijania ---------- */
 window.addEventListener('scroll', () => document.documentElement.classList.toggle('scrolled', window.scrollY > 24), { passive: true });
 $('#btn-wipe').onclick = () => { if (confirm('Wyczyścić dane zapisane lokalnie w tej przeglądarce? (Dane w bazie zostaną.)')) { try { localStorage.clear(); } catch (e) {} location.reload(); } };
+
+/* ---------- menu „Więcej” / „Filtry” ---------- */
+document.addEventListener('click', e => {
+  $$('details.more[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; else if (!d.classList.contains('filt') && e.target.closest('.more-pop button, .more-pop label.btn')) setTimeout(() => { d.open = false; }, 0); });
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $$('details.more[open]').forEach(d => { d.open = false; }); });
 
 /* ---------- motyw ---------- */
 function applyTheme(t) { if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; }
