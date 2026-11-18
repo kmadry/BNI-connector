@@ -1,6 +1,9 @@
 (() => {
 'use strict';
-const KEY = 'bni-connector-v1';
+const KEY = 'bni-connector-v2';
+try { // jednorazowo porzuć stare dane lokalne (v1)
+  if (!localStorage.getItem('bni-migrated-v2')) { localStorage.removeItem('bni-connector-v1'); localStorage.removeItem('bni-synced'); localStorage.setItem('bni-migrated-v2', '1'); }
+} catch (e) {}
 const MAX_ROWS = 20;
 const QUESTIONS = [
   'Trzech najlepszych klientów / branże:',
