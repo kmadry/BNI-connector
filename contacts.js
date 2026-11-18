@@ -100,7 +100,8 @@ $('#ct-scan').onclick = () => B.show('scan');
 /* ---------- import / eksport ---------- */
 const CSV_COLS = ['firstName', 'lastName', 'company', 'title', 'industry', 'emails', 'phones', 'website', 'city', 'tags', 'relation', 'scale', 'notes'];
 function toCsv(rows) {
-  const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const fx = v => { v = String(v ?? ''); return /^[=@\t\r]|^[+\-](?![\d\s])/.test(v) ? "'" + v : v; };
+  const q = v => '"' + fx(v).replace(/"/g, '""') + '"';
   return '﻿' + [CSV_COLS.join(',')].concat(rows.map(c => CSV_COLS.map(k => q(Array.isArray(c[k]) ? c[k].join('; ') : c[k])).join(','))).join('\r\n');
 }
 function parseCsv(t) {
@@ -115,7 +116,7 @@ function parseCsv(t) {
   }
   row.push(cur); if (row.some(x => x.trim())) out.push(row);
   const head = (out.shift() || []).map(h => h.trim());
-  return out.map(r => { const o = {}; head.forEach((h, i) => { if (CSV_COLS.includes(h)) o[h] = (r[i] || '').trim(); }); return o; });
+  return out.map(r => { const o = {}; head.forEach((h, i) => { if (CSV_COLS.includes(h)) o[h] = (r[i] || '').trim().replace(/^'(?=[=@+\-\t\r])/, ''); }); return o; });
 }
 function normalize(d, source) {
   const split = s => (Array.isArray(s) ? s : String(s || '').split(/[;,]/)).map(x => String(x).trim()).filter(Boolean);
@@ -299,6 +300,10 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); pal.open ? pal.close() : openPalette(); }
   else if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || '') && $('#view-contacts').classList.contains('active')) { e.preventDefault(); $('#ct-search').focus(); }
 });
+
+/* ---------- pasek nawigacji: ukryj przycisk motywu podczas przewijania ---------- */
+window.addEventListener('scroll', () => document.documentElement.classList.toggle('scrolled', window.scrollY > 24), { passive: true });
+$('#btn-wipe').onclick = () => { if (confirm('Wyczyścić dane zapisane lokalnie w tej przeglądarce? (Dane w bazie zostaną.)')) { try { localStorage.clear(); } catch (e) {} location.reload(); } };
 
 /* ---------- motyw ---------- */
 function applyTheme(t) { if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; }

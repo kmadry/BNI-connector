@@ -7,7 +7,9 @@ fs.mkdirSync(OUT, { recursive: true });
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
 const srv = http.createServer((q, r) => {
   const f = path.join(root, q.url.split('?')[0].split('#')[0].replace(/^\/$/, '/index.html'));
-  fs.readFile(f, (e, d) => { if (e) { r.statusCode = 404; return r.end(); } r.setHeader('content-type', types[path.extname(f)] || 'text/plain'); r.end(d); });
+  fs.readFile(f, (e, d) => { if (e) { r.statusCode = 404; return r.end(); } r.setHeader('content-type', types[path.extname(f)] || 'text/plain');
+    try { JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8')).headers[0].headers.forEach(h => r.setHeader(h.key, h.value)); } catch (x) {}
+    r.end(d); });
 }).listen(0);
 const results = [];
 const ok = (name, cond, extra = '') => { results.push([cond ? 'PASS' : 'FAIL', name, extra]); console.log((cond ? 'PASS ' : 'FAIL ') + name + (extra ? ' — ' + extra : '')); };
@@ -18,7 +20,7 @@ process.on('exit', () => {});
   const b = await chromium.launch();
   const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
   const p = await ctx.newPage();
-  globalThis.errs = []; const errs = globalThis.errs; p.on('pageerror', e => errs.push(e.message)); p.on('dialog', d => d.accept());
+  globalThis.errs = []; const errs = globalThis.errs; p.on('pageerror', e => errs.push(e.message)); p.on('console', m => { if (/Content Security Policy|violates/i.test(m.text())) errs.push('CSP: ' + m.text().slice(0, 160)); }); p.on('dialog', d => d.accept());
   await p.goto(base); await p.waitForFunction(() => document.querySelector('#sync').textContent.trim().length > 0, null, { timeout: 15000 }).catch(() => {}); await p.waitForTimeout(500);
   ok('sync z bazą', /OK|zapisano/.test(await p.textContent('#sync')), await p.textContent('#sync'));
   await p.screenshot({ path: OUT + '/01-wizytowki.png' });
@@ -79,8 +81,13 @@ process.on('exit', () => {});
   ok('skan: parser wyciąga e-mail/tel/firmę', /jan@example.com/.test(JSON.stringify(parsed)) && /600 000 123|600000123/.test(JSON.stringify(parsed)) && /Alfa Budowa/.test(JSON.stringify(parsed)), JSON.stringify(parsed).slice(0, 140));
   await p.screenshot({ path: OUT + '/05-skan.png' });
   await p.click('#tabs [data-view=preview]'); await p.waitForSelector('.qr svg');
-  ok('okladka: telefon i e-mail czytelne (kolor rozny od tla)', await p.evaluate(() => { const e = document.querySelector('.cover .bot .ct'); const cs = getComputedStyle(e); return cs.color !== cs.backgroundColor && cs.backgroundColor === 'rgba(0, 0, 0, 0)'; }));
+  ok('okladka: telefon i e-mail czytelne (kolor rozny od tla)', await p.evaluate(() => { const e = document.querySelector('.cover .cv-bot .ct'); const cs = getComputedStyle(e); return cs.color !== cs.backgroundColor && cs.backgroundColor === 'rgba(0, 0, 0, 0)'; }));
  await p.screenshot({ path: OUT + '/06-druk.png' });
+  ok('okladka: brak stylow naglowka strony (tlo przezroczyste, nie sticky)', await p.evaluate(() => { const e = document.querySelector('.cover .cv-top'); const cs = getComputedStyle(e); return cs.backgroundColor === 'rgba(0, 0, 0, 0)' && cs.position !== 'sticky'; }));
+  await p.emulateMedia({ media: 'print' });
+  ok('druk: imie, QR i kontakt na okladce widoczne', await p.evaluate(() => ['.cover .nm', '.cover .qr', '.cover .cv-bot .ct'].every(q => { const e = document.querySelector(q); return e && e.offsetParent !== null && e.getBoundingClientRect().height > 0; })));
+  ok('druk: uklad A4 w dwoch kolumnach niezaleznie od podgladu', await p.evaluate(() => { const c = document.querySelector('.sheet-card'); return getComputedStyle(c).flexDirection === 'row'; }));
+  await p.emulateMedia({ media: 'screen' });
 
   // mobile
   const m = await (await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true })).newPage();
@@ -91,11 +98,21 @@ process.on('exit', () => {});
   const overflow = await m.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   ok('mobile: brak poziomego przewijania', overflow <= 1, 'nadmiar ' + overflow + 'px');
   await m.screenshot({ path: OUT + '/m1-wizytowki.png' });
+  for (const v of ['cards', 'contacts', 'scan', 'editor', 'preview', 'links']) { await m.click('#tabs [data-view=' + v + ']', { timeout: 5000 }); await m.waitForTimeout(150); if (!(await m.locator('#view-' + v + '.active').count())) ok('mobile: nawigacja ' + v, false); }
+  ok('mobile: wszystkie 6 zakladek nawigacji klikalne', true);
   await m.click('#tabs [data-view=contacts]'); await m.waitForTimeout(400); await m.screenshot({ path: OUT + '/m2-kontakty.png' });
   ok('mobile: kontakty bez przewijania poziomego', (await m.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 1);
   await m.click('#tabs [data-view=cards]'); await m.click('.tile >> nth=0'); await m.waitForTimeout(500); await m.screenshot({ path: OUT + '/m3-edytor.png' });
   ok('mobile: edytor bez przewijania poziomego', (await m.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 1);
 
+  // XSS przez id (zatruta karta importowana jako JSON)
+  await p.setInputFiles('#file-import', { name: 'x.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ cards: [{ id: '"><img src=x onerror=window.__xss=1>', name: 'X', accent: 'red;background:url(//e)', qa: [], offered: [], sought: [] }], links: [{ id: 'a"b', from: 'x', to: 'y' }] })) });
+  await p.click('#tabs [data-view=cards]'); await p.waitForTimeout(500);
+  ok('XSS: zatrute id nie wykonuje kodu', (await p.evaluate(() => window.__xss)) === undefined);
+  ok('XSS: kolor akcentu sanityzowany', await p.evaluate(() => !JSON.stringify(window.BNI.state.cards).includes('url(//e)')));
+  // sprzątanie: usuń kartę testową z lokalnego stanu i (przez synchronizację) z bazy
+  await p.evaluate(() => { window.BNI.state.cards = window.BNI.state.cards.filter(c => c.name !== 'X'); window.BNI.state.links = window.BNI.state.links.filter(l => window.BNI.getCard(l.from) && window.BNI.getCard(l.to)); window.BNI.save(); });
+  await p.waitForTimeout(2500);
   ok('brak błędów JS', errs.length === 0, errs.join(' | '));
   const fails = results.filter(r => r[0] === 'FAIL').length;
   console.log(`\n${results.length - fails}/${results.length} PASS`);

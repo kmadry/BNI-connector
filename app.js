@@ -26,7 +26,10 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const uid = () => Math.random().toString(36).slice(2, 10);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const normCard = c => { const d = newCard(); const o = Object.assign({}, d, c); o.qa = Array.isArray(c.qa) && c.qa.length ? c.qa : d.qa; o.offered = Array.isArray(c.offered) && c.offered.length ? c.offered : [{}]; o.sought = Array.isArray(c.sought) && c.sought.length ? c.sought : [{}]; return o; };
+const SAFE_ID = /^[A-Za-z0-9_-]{1,40}$/;
+const okId = v => SAFE_ID.test(String(v));
+const okLink = l => l && okId(l.id) && okId(l.from) && okId(l.to);
+const normCard = c => { const d = newCard(); const o = Object.assign({}, d, c); if (!okId(o.id)) o.id = uid(); if (!/^#[0-9a-f]{3,8}$/i.test(String(o.accent))) o.accent = '#e8473f'; o.qa = Array.isArray(c.qa) && c.qa.length ? c.qa : d.qa; o.offered = Array.isArray(c.offered) && c.offered.length ? c.offered : [{}]; o.sought = Array.isArray(c.sought) && c.sought.length ? c.sought : [{}]; return o; };
 function load() {
   try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.cards)) return { cards: s.cards.map(normCard), links: s.links || [], contacts: s.contacts || [] }; } catch (e) {}
   return { cards: [], links: [], contacts: [] };
@@ -49,8 +52,9 @@ async function pull() {
   if (!cloud) return false;
   try {
     if (dirty) await push();
-    const [cs, ls, ks] = await Promise.all([rest('bni_cards?select=id,data'), rest('bni_links?select=id,from_id,to_id,note'), rest('bni_contacts?select=id,data')]);
-    const remote = { cards: cs.map(r => normCard(r.data || {})), links: ls.map(l => ({ id: l.id, from: l.from_id, to: l.to_id, note: l.note })), contacts: ks.map(r => r.data) };
+    let [cs, ls, ks] = await Promise.all([rest('bni_cards?select=id,data'), rest('bni_links?select=id,from_id,to_id,note'), rest('bni_contacts?select=id,data')]);
+    cs = cs.filter(r => okId(r.id)); ks = ks.filter(r => okId(r.id)); ls = ls.filter(l => okId(l.id) && okId(l.from_id) && okId(l.to_id));
+    const remote = { cards: cs.map(r => normCard(r.data || {})), links: ls.map(l => ({ id: l.id, from: l.from_id, to: l.to_id, note: l.note })), contacts: ks.map(r => Object.assign({}, r.data, { id: r.id })) };
     remoteCards = new Set(cs.map(r => r.id)); remoteLinks = new Set(ls.map(l => l.id)); remoteContacts = new Set(ks.map(r => r.id));
     if (!localStorage.getItem('bni-synced')) { // pierwsze uruchomienie: dołącz lokalne wizytówki
       state.cards.forEach(c => { if (!remoteCards.has(c.id)) remote.cards.push(c); });
@@ -98,6 +102,7 @@ function newCard(over = {}) {
     offered: [{}], sought: [{}]
   }, over);
 }
+window.BNI_SAFE = { okId, normCard };
 const getCard = id => state.cards.find(c => c.id === id);
 const cur = () => getCard(currentId);
 
@@ -121,8 +126,8 @@ function renderList() {
   if (!state.cards.length) { el.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-ico">🪪</div><h3>Nie masz jeszcze wizytówek</h3><p>Utwórz pierwszą albo wczytaj przykładowe dane.</p></div>'; return; }
   el.innerHTML = state.cards.map(c => {
     const n = state.links.filter(l => l.from === c.id || l.to === c.id).length;
-    return `<div class="tile" data-id="${c.id}" tabindex="0" role="button">
-      <div class="hd" style="border-left-color:${esc(c.accent)}"><button class="small qrb" data-qr-id="${c.id}">Kod QR</button><b>${esc(c.name || 'Bez nazwy')}</b><small>${esc(c.group)}${c.city ? ' · ' + esc(c.city) : ''}</small></div>
+    return `<div class="tile" data-id="${esc(c.id)}" tabindex="0" role="button">
+      <div class="hd" style="border-left-color:${esc(c.accent)}"><button class="small qrb" data-qr-id="${esc(c.id)}">Kod QR</button><b>${esc(c.name || 'Bez nazwy')}</b><small>${esc(c.group)}${c.city ? ' · ' + esc(c.city) : ''}</small></div>
       <div class="bd">${c.company ? esc(c.company) + '<br>' : ''}Kontakty: ${filled(c.offered).length} oferowane · ${filled(c.sought).length} poszukiwane · ${n} połączeń</div>
     </div>`;
   }).join('');
@@ -187,7 +192,7 @@ $('#btn-del').onclick = () => {
 
 /* ---------- podgląd / druk ---------- */
 function fillSelect(sel, withCur = true) {
-  sel.innerHTML = state.cards.map(c => `<option value="${c.id}">${esc(c.name || 'Bez nazwy')}</option>`).join('');
+  sel.innerHTML = state.cards.map(c => `<option value="${esc(c.id)}">${esc(c.name || 'Bez nazwy')}</option>`).join('');
   if (withCur && currentId) sel.value = currentId;
 }
 const OW = [14, 18, 18.6, 17, 13], SW = [14, 17, 16, 33.6];
@@ -204,9 +209,9 @@ function cardHTML(c, withQr) {
   const o = c.offered || [], s = c.sought || [];
   const qa = `<div class="panel"><ol class="qa">${c.qa.map((x, i) => `<li><span class="n">${i + 1}.</span><div><b>${esc(x.q)}</b><i>${esc(x.a)}</i></div></li>`).join('')}</ol></div>`;
   const tel = [c.phone, c.phone2].filter(Boolean).map(esc).join('<br>');
-  const cover = `<div class="panel cover"><div class="top"><div><div class="nm">${esc(c.name).replace(' ', '<br>')}</div><div class="sub">${esc(c.group)}${c.city ? '<br>' + esc(c.city) : ''}${c.company ? '<br>' + esc(c.company) : ''}</div></div>
+  const cover = `<div class="panel cover"><div class="cv-top"><div><div class="nm">${esc(c.name).replace(' ', '<br>')}</div><div class="cv-sub">${esc(c.group)}${c.city ? '<br>' + esc(c.city) : ''}${c.company ? '<br>' + esc(c.company) : ''}</div></div>
     <div class="rt"><div class="logo">BNI<sup>®</sup></div>${withQr ? '<div class="qr" data-qr>…</div>' : ''}</div></div>
-    <div class="bot"><div class="ct">${tel ? ICON_TEL + '<span>' + tel + '</span>' : ''}</div><div class="ct">${c.email ? ICON_MAIL + '<span>' + esc(c.email) + '</span>' : ''}</div></div></div>`;
+    <div class="cv-bot"><div class="ct">${tel ? ICON_TEL + '<span>' + tel + '</span>' : ''}</div><div class="ct">${c.email ? ICON_MAIL + '<span>' + esc(c.email) + '</span>' : ''}</div></div></div>`;
   return `<div class="sheet-card" style="--acc:${esc(c.accent || '#e8473f')}">
     <div class="side"><div class="side-label">Strona A (awers)</div>${tablePanel(OFFERED_COLS, OW, o, 0)}${tablePanel(OFFERED_COLS, OW, o, 10)}${tablePanel(SOUGHT_COLS, SW, s, 0, true)}</div>
     <div class="side"><div class="side-label">Strona B (rewers)</div>${tablePanel(SOUGHT_COLS, SW, s, 10, true)}${qa}${cover}</div></div>`;
@@ -222,7 +227,9 @@ async function unpack(tok) {
   const raw = b64Bytes(tok.slice(2));
   if (tok.startsWith('r.')) return new TextDecoder().decode(raw);
   const ds = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-  return new TextDecoder().decode(await new Response(ds).arrayBuffer());
+  const buf = await new Response(ds).arrayBuffer();
+  if (buf.byteLength > 200000) throw new Error('za duży ladunek');
+  return new TextDecoder().decode(buf);
 }
 const bytesB64 = u => btoa(String.fromCharCode(...u)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const b64Bytes = t => Uint8Array.from(atob(t.replace(/-/g, '+').replace(/_/g, '/')), ch => ch.charCodeAt(0));
@@ -307,7 +314,7 @@ function renderLinks() {
   const sg = suggestions();
   $('#suggestions').innerHTML = sg.length ? sg.map((s, i) => `<div class="item"><div>${name(s.from)} → ${name(s.to)}<small>${esc(s.note)}</small></div><button class="small primary" data-sg="${i}">Połącz</button></div>`).join('') : '<p class="hint">Brak podpowiedzi — uzupełnij listy „poszukiwane” i „oferowane”.</p>';
   $('#suggestions').onclick = e => { const b = e.target.closest('[data-sg]'); if (b) { const s = sg[+b.dataset.sg]; addLink(s.from, s.to, s.note); } };
-  $('#link-list').innerHTML = state.links.length ? state.links.map(l => `<div class="item"><div>${name(l.from)} → ${name(l.to)}<small>${esc(l.note)}</small></div><button class="small danger" data-rm="${l.id}">✕</button></div>`).join('') : '<p class="hint">Brak połączeń.</p>';
+  $('#link-list').innerHTML = state.links.length ? state.links.map(l => `<div class="item"><div>${name(l.from)} → ${name(l.to)}<small>${esc(l.note)}</small></div><button class="small danger" data-rm="${esc(l.id)}">✕</button></div>`).join('') : '<p class="hint">Brak połączeń.</p>';
   $('#link-list').onclick = e => { const b = e.target.closest('[data-rm]'); if (b) { state.links = state.links.filter(l => l.id !== b.dataset.rm); save(); renderLinks(); } };
   drawGraph();
 }
@@ -352,8 +359,8 @@ $('#file-import').onchange = async e => {
   try {
     const d = JSON.parse(await f.text());
     const cards = Array.isArray(d.cards) ? d.cards : d.id ? [d] : null; if (!cards) throw 0;
-    for (const c of cards) if (!getCard(c.id)) state.cards.push(Object.assign(newCard(), c));
-    for (const l of d.links || []) if (!state.links.some(x => x.id === l.id)) state.links.push(l);
+    for (const c of cards) if (!getCard(c.id)) state.cards.push(normCard(c));
+    for (const l of d.links || []) if (okLink(l) && !state.links.some(x => x.id === l.id)) state.links.push({ id: l.id, from: l.from, to: l.to, note: String(l.note || '').slice(0, 500) });
     save(); renderList(); toast('Zaimportowano');
   } catch (err) { toast('Niepoprawny plik'); }
   e.target.value = '';
@@ -367,7 +374,7 @@ async function importFromHash() {
   try {
     const tok = m[1];
     const json = /^[zr]\./.test(tok) ? await unpack(tok) : unb64(tok);
-    const c = Object.assign(newCard(), JSON.parse(json));
+    const c = normCard(JSON.parse(json));
     if (confirm(`Dodać wizytówkę „${c.name}” do swojej listy?`)) { if (getCard(c.id)) c.id = uid(); state.cards.push(c); currentId = c.id; save(); renderList(); }
   } catch (e) { toast('Niepoprawny link'); }
   history.replaceState(null, '', location.pathname + location.search);

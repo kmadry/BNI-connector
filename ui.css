@@ -202,3 +202,18 @@ table.edit input{text-overflow:ellipsis}
 fieldset{min-width:0}
 #editor,.editor-grid>*{min-width:0}
 @media (max-width:820px){.rail-foot #btn-theme{display:inline-flex;align-items:center;padding:4px 10px;min-height:32px;background:rgba(18,18,22,.8);border-radius:999px;color:#cfcfd8}}
+
+/* ===== Druk zawsze w układzie A4 (2 kolumny), niezależnie od podglądu ===== */
+@media print{
+  .sheet .paper{width:210mm!important;padding:10mm!important;background:#fff!important;box-shadow:none!important}
+  .sheet .sheet-card{flex-direction:row!important;gap:10mm!important;align-items:flex-start!important}
+  .sheet .side-label{color:#555!important}
+  .rail-foot,.app > main > .view:not(#view-preview){display:none!important}
+}
+/* mobile: przełącznik motywu nie zasłania treści podczas przewijania */
+@media (max-width:820px){
+  body{position:relative}
+  .rail-foot{position:fixed!important;top:8px;right:12px;transition:opacity .2s}
+  html.scrolled .rail-foot{opacity:0;pointer-events:none}
+  main{padding-top:56px}
+}

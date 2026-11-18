@@ -554,6 +554,8 @@
     tessPromise = new Promise(function (resolve, reject) {
       var s = document.createElement('script');
       s.src = TESSERACT_URL;
+      s.integrity = 'sha384-GJqSu7vueQ9qN0E9yLPb3Wtpd7OrgK8KmYzC8T1IysG1bcvxvIO4qtYR/D3A991F';
+      s.crossOrigin = 'anonymous';
       s.async = true;
       s.onload = function () { window.Tesseract ? resolve(window.Tesseract) : reject(new Error('Nie udało się załadować silnika OCR.')); };
       s.onerror = function () { tessPromise = null; reject(new Error('Nie udało się pobrać silnika OCR (brak internetu?). Możesz wkleić tekst ręcznie.')); };
