@@ -67,8 +67,8 @@ async function pull() {
     } else state = remote;
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (_) {}
     if (!getCard(currentId)) currentId = (getCard('demo-adam') || state.cards[0])?.id || null;
-    setSync('☁ synchronizacja OK', 'ok'); return true;
-  } catch (e) { setSync('☁ offline (dane lokalne)', 'err'); return false; }
+    setSync('synchronizacja OK', 'ok'); return true;
+  } catch (e) { setSync('offline (dane lokalne)', 'err'); return false; }
 }
 window.addEventListener('online', () => { if (dirty) push(); });
 function schedulePush() { if (!cloud) return; dirty = true; clearTimeout(pushTimer); pushTimer = setTimeout(push, 700); }
@@ -92,8 +92,8 @@ function push() {
       const ok = snap.links.filter(l => ids.has(l.from) && ids.has(l.to));
       if (ok.length) await rest('bni_links?on_conflict=id', Object.assign({ body: JSON.stringify(ok.map(l => ({ id: l.id, from_id: l.from, to_id: l.to, note: l.note || '' }))) }, up));
       remoteCards = ids; remoteLinks = new Set(ok.map(l => l.id));
-      setSync('☁ zapisano', 'ok');
-    } catch (e) { dirty = true; setSync('☁ błąd zapisu', 'err'); }
+      setSync('zapisano', 'ok');
+    } catch (e) { dirty = true; setSync('błąd zapisu', 'err'); }
   });
   return pushing;
 }
@@ -348,7 +348,7 @@ function drawGraph() {
   const pos = {}; state.cards.forEach((c, i) => { const a = (2 * Math.PI * i) / n - Math.PI / 2; pos[c.id] = [n === 1 ? cx : cx + R * Math.cos(a), n === 1 ? cy : cy + R * Math.sin(a)]; });
   svg.innerHTML = `<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#888"/></marker></defs>` +
     state.links.map(l => { const [x1, y1] = pos[l.from] || [0, 0], [x2, y2] = pos[l.to] || [0, 0]; const dx = x2 - x1, dy = y2 - y1, d = Math.hypot(dx, dy) || 1; return `<line x1="${x1 + dx / d * 24}" y1="${y1 + dy / d * 24}" x2="${x2 - dx / d * 28}" y2="${y2 - dy / d * 28}" stroke="#888" stroke-width="2" marker-end="url(#ar)"/>`; }).join('') +
-    state.cards.map(c => { const [x, y] = pos[c.id]; return `<g><circle cx="${x}" cy="${y}" r="22" fill="${esc(c.accent)}"/><text x="${x}" y="${y + 4}" style="fill:#fff;font-weight:700">${esc((c.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase())}</text><text x="${x}" y="${y + 40}">${esc(c.name || 'Bez nazwy')}</text></g>`; }).join('');
+    state.cards.map(c => { const [x, y] = pos[c.id]; return `<g><rect x="${x - 20}" y="${y - 20}" width="40" height="40" fill="var(--text)"/><text x="${x}" y="${y + 4}" style="fill:var(--bg);font:500 12px var(--mono)">${esc((c.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase())}</text><text x="${x}" y="${y + 40}" style="paint-order:stroke;stroke:var(--surface);stroke-width:4px">${esc(c.name || 'Bez nazwy')}</text></g>`; }).join('');
 }
 
 /* ---------- kod QR ze strony ---------- */

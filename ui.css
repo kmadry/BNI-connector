@@ -59,7 +59,7 @@ main{padding:34px clamp(18px,3.4vw,52px) 80px;max-width:1280px;width:100%}
 .actions{display:flex;flex-wrap:wrap;gap:8px}
 .bar{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px;align-items:center}
 .hint{font:400 12.5px/1.5 var(--mono);color:var(--muted)}
-.chk{display:flex;align-items:center;gap:8px;font:500 13px var(--sans)}
+.chk{display:flex;align-items:center;gap:8px;font:600 13px var(--sans)}
 .grow{flex:1;min-width:240px;display:flex;flex-direction:column}
 
 /* ---------- kontrolki ---------- */
@@ -113,7 +113,7 @@ td.grip:hover{color:var(--accent)}
 .item{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);background:none}
 .item small{display:block;color:var(--muted);font:400 12px var(--mono)}
 #graph{width:100%;background:var(--surface);border:1px solid var(--rule)}
-#graph text{font:500 12px var(--sans);text-anchor:middle;fill:var(--text)}
+#graph text{font:400 12px var(--sans);text-anchor:middle;fill:var(--text)}
 
 /* ---------- edytor + magazyn (tacka) ---------- */
 .editor-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:26px;align-items:start}
@@ -124,7 +124,7 @@ td.grip:hover{color:var(--accent)}
 .tray-list{display:flex;flex-direction:column}
 .tc{display:flex;align-items:center;gap:8px;padding:7px 2px;border-bottom:1px solid var(--line)}
 .tc:hover{background:var(--surface-2)}
-.dh{cursor:grab;touch-action:none;user-select:none;color:var(--muted);padding:8px 4px;font:600 14px var(--mono);letter-spacing:-2px}
+.dh{cursor:grab;touch-action:none;user-select:none;color:var(--muted);padding:8px 4px;font:500 14px var(--mono);letter-spacing:-2px}
 .dh:hover{color:var(--accent)}
 .tc-main{min-width:0;flex:1;display:flex;flex-direction:column;line-height:1.25}
 .tc-main b{font-weight:600}.tc-main small{color:var(--muted);font-size:12px}
@@ -172,7 +172,7 @@ dialog#qr-modal{max-width:min(92vw,420px)}
 #toast.show{opacity:1}
 #snack{display:flex;align-items:center;gap:16px}
 #snack.show{opacity:1;pointer-events:auto}
-#snack button{background:transparent;color:var(--bg);border:0;border-bottom:1px solid var(--bg);min-height:28px;padding:0 2px;font:600 13px var(--mono)}
+#snack button{background:transparent;color:var(--bg);border:0;border-bottom:1px solid var(--bg);min-height:28px;padding:0 2px;font:500 13px var(--mono)}
 #snack button:hover{background:var(--bg);color:var(--text)}
 .theme-ico{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;margin-right:2px}
 .hint-tap{display:none}
@@ -207,8 +207,8 @@ dialog#qr-modal{max-width:min(92vw,420px)}
   #tabs{flex-direction:row;width:100%}
   #tabs button{flex:1;min-width:0;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 2px;border-bottom:0;border-right:1px solid var(--line);font:600 10.5px var(--sans);min-height:56px}
   #tabs button:last-child{border-right:0}
-  #tabs button::before{display:none}
-  #tabs button svg{display:block;width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:square;stroke-linejoin:miter}
+  #tabs button::before{display:block;min-width:0;font:500 12px var(--mono)}
+  #tabs button svg{display:none}
   .rail-foot{position:fixed;top:0;right:0;margin:0;padding:0;flex-direction:row;align-items:center;transition:opacity .15s}
   .rail-foot .ghost{display:none}
   .rail-foot #btn-theme{display:inline-flex;min-height:34px;padding:4px 10px;border:0;border-left:1px solid var(--rule);border-bottom:1px solid var(--rule);background:var(--bg)}
@@ -241,3 +241,14 @@ dialog#qr-modal{max-width:min(92vw,420px)}
 .lg-opts label.chk{flex-direction:row;align-items:center;text-transform:none;letter-spacing:0;font:500 14px var(--sans);color:var(--text)}
 .lg-seg{display:flex}.lg-seg button{flex:1;border-radius:0}.lg-seg button[aria-pressed=true]{background:var(--text);color:var(--bg)}
 @media (max-width:600px){.lg-opts{grid-template-columns:1fr}}
+
+/* ---------- poprawki po audycie wyglądu ---------- */
+dialog#qr-modal{border:1px solid var(--rule);border-radius:0}
+#qr-big{border-radius:0;border:1px solid var(--rule)}
+#scan-root .scan-badge{color:var(--accent-ink)}
+#scan-root .scan-label{font:500 11px var(--mono);text-transform:uppercase;letter-spacing:.07em}
+#scan-root .scan-drop{border:1px dashed var(--rule)}
+#scan-root .scan-field--low{background:var(--accent-soft);border-color:var(--accent)}
+input::placeholder,textarea::placeholder{opacity:1}
+.sub{max-width:none;text-wrap:balance}
+#btn-wipe{margin-left:auto}
