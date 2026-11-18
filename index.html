@@ -5,12 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BNI Connector – rozszerzone wizytówki</title>
 <meta name="theme-color" content="#16161a">
+<meta name="robots" content="noindex">
 <meta name="color-scheme" content="light dark">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="scan.css">
 <link rel="stylesheet" href="ui.css">
+<link rel="stylesheet" href="viewer.css">
 </head>
 <body>
 <div class="app">
@@ -169,6 +171,7 @@
   </section>
 </main>
 </div>
+<div id="viewer" class="viewer" hidden aria-live="polite"></div>
 <dialog id="palette" aria-label="Paleta poleceń"><div class="pal"><input id="pal-input" placeholder="Szukaj kontaktów, wizytówek i poleceń…" aria-label="Paleta poleceń"><ul id="pal-list" role="listbox"></ul></div></dialog>
 
 <dialog id="qr-modal" aria-labelledby="qr-name">
@@ -186,6 +189,7 @@
 <div id="toast" role="status" aria-live="polite"></div>
 <script src="config.js"></script>
 <script src="qrcode.js"></script>
+<script src="viewer.js"></script>
 <script src="scan.js"></script>
 <script src="app.js"></script>
 <script src="contacts.js"></script>

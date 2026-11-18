@@ -105,6 +105,28 @@ process.on('exit', () => {});
   await m.click('#tabs [data-view=cards]'); await m.click('.tile >> nth=0'); await m.waitForTimeout(500); await m.screenshot({ path: OUT + '/m3-edytor.png' });
   ok('mobile: edytor bez przewijania poziomego', (await m.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 1);
 
+  // widok publiczny wizytówki (cel kodu QR): tylko wizytówka + polecajki, bez zapisu do bazy
+  const vctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  const v = await vctx.newPage(); const writes = []; const verrs = [];
+  v.on('pageerror', e => verrs.push(e.message)); v.on('console', m => { if (/Content Security Policy|violates/i.test(m.text())) verrs.push('CSP: ' + m.text().slice(0, 120)); });
+  v.on('request', r => { if (/supabase\.co/.test(r.url()) && r.method() !== 'GET') writes.push(r.method() + ' ' + r.url()); });
+  const reqs = []; v.on('request', r => { if (/supabase\.co/.test(r.url())) reqs.push(r.url()); });
+  await v.goto(base + '#c=demo-adam'); await v.waitForSelector('.v-hero h1', { timeout: 15000 });
+  ok('widok QR: pokazuje wizytówkę', /Adam/i.test(await v.textContent('.v-hero h1')));
+  ok('widok QR: bez powłoki aplikacji (menu/nawigacja ukryte)', !(await v.isVisible('.rail')) && !(await v.isVisible('#tabs')));
+  ok('widok QR: polecajki (TOP 20) widoczne', (await v.locator('.v-list li').count()) >= 20, (await v.locator('.v-list li').count()) + ' pozycji');
+  ok('widok QR: 8 pytań 1:1', (await v.locator('.v-sec details').count()) === 8);
+  ok('widok QR: przyciski Zadzwoń / Napisz / Zapisz kontakt', (await v.locator('a[href^="tel:"]').count()) >= 1 && (await v.locator('a[href^="mailto:"]').count()) === 1 && (await v.locator('#v-save').count()) === 1);
+  ok('widok QR: brak poziomego przewijania', (await v.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 1);
+  ok('widok QR: pobiera tylko jedną kartę, bez zapisu', reqs.length === 1 && /bni_cards\?id=eq\.demo-adam/.test(reqs[0]) && writes.length === 0, reqs.length + ' zapytań, zapisów: ' + writes.length);
+  await v.screenshot({ path: OUT + '/07-widok-qr.png', fullPage: true });
+  const vc = await v.evaluate(() => window.BNIViewer.vcard({ name: 'Jan Test', phone: '+48 600 000 001', email: 'jan@example.com', company: 'Firma' }));
+  ok('widok QR: poprawna wizytówka vCard', /BEGIN:VCARD/.test(vc) && /TEL;TYPE=CELL:\+48600000001/.test(vc) && /EMAIL:jan@example\.com/.test(vc));
+  await v.goto(base + '#c=' + encodeURIComponent('"><img src=x onerror=window.__x=1>')); await v.waitForFunction(() => /Nie znaleziono/.test(document.querySelector('#viewer').textContent), null, { timeout: 8000 }).catch(() => {});
+  ok('widok QR: nieprawidłowy id → komunikat, brak kodu', /Nie znaleziono/.test(await v.textContent('#viewer')) && (await v.evaluate(() => window.__x)) === undefined);
+  await v.goto(base + '#c=nie-ma-takiej'); await v.waitForFunction(() => /Nie znaleziono/.test(document.querySelector('#viewer').textContent), null, { timeout: 8000 }).catch(() => {});
+  ok('widok QR: nieistniejąca karta → komunikat', /Nie znaleziono/.test(await v.textContent('#viewer')));
+  ok('widok QR: brak błędów JS/CSP', verrs.length === 0, verrs.join(' | '));
   // XSS przez id (zatruta karta importowana jako JSON)
   await p.setInputFiles('#file-import', { name: 'x.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ cards: [{ id: '"><img src=x onerror=window.__xss=1>', name: 'X', accent: 'red;background:url(//e)', qa: [], offered: [], sought: [] }], links: [{ id: 'a"b', from: 'x', to: 'y' }] })) });
   await p.click('#tabs [data-view=cards]'); await p.waitForTimeout(500);

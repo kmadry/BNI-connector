@@ -382,6 +382,7 @@ async function importFromHash() {
 
 renderList();
 window.BNI = { get state() { return state; }, setCurrent: id => { currentId = id; }, save, toast, uid, esc, $, $$, cur, getCard, show, renderTable, renderEditor, OFFERED_COLS, SOUGHT_COLS, MAX_ROWS, cloud: () => cloud };
-pull().then(() => { renderList(); if (window.BNIContacts) window.BNIContacts.onData(); return importFromHash(); });
+if (/^#(c|card)=/.test(location.hash) && window.BNIViewer) window.BNIViewer.run({ rest, unpack, normCard, okId });
+else pull().then(() => { renderList(); if (window.BNIContacts) window.BNIContacts.onData(); return importFromHash(); });
 if (typeof module !== 'undefined') module.exports = { suggestions };
 })();
