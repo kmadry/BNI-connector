@@ -27,8 +27,8 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 function load() {
-  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.cards)) return { cards: s.cards, links: s.links || [] }; } catch (e) {}
-  return { cards: [], links: [] };
+  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.cards)) return { cards: s.cards, links: s.links || [], contacts: s.contacts || [] }; } catch (e) {}
+  return { cards: [], links: [], contacts: [] };
 }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} schedulePush(); }
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2200); }
@@ -37,7 +37,7 @@ function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.ad
 const CFG = window.BNI_CONFIG || {};
 const cloud = !!(CFG.url && CFG.key);
 const H = { apikey: CFG.key, Authorization: 'Bearer ' + CFG.key, 'Content-Type': 'application/json' };
-let remoteCards = new Set(), remoteLinks = new Set(), dirty = false, pushTimer = null, pushing = Promise.resolve();
+let remoteContacts = new Set(), remoteCards = new Set(), remoteLinks = new Set(), dirty = false, pushTimer = null, pushing = Promise.resolve();
 function setSync(t, cls) { const el = $('#sync'); if (el) { el.textContent = t; el.className = cls || ''; } }
 async function rest(path, opt = {}) {
   const r = await fetch(CFG.url + '/rest/v1/' + path, Object.assign({ headers: H }, opt));
@@ -47,12 +47,13 @@ async function rest(path, opt = {}) {
 async function pull() {
   if (!cloud) return false;
   try {
-    const [cs, ls] = await Promise.all([rest('bni_cards?select=id,data'), rest('bni_links?select=id,from_id,to_id,note')]);
-    const remote = { cards: cs.map(r => r.data), links: ls.map(l => ({ id: l.id, from: l.from_id, to: l.to_id, note: l.note })) };
-    remoteCards = new Set(cs.map(r => r.id)); remoteLinks = new Set(ls.map(l => l.id));
+    const [cs, ls, ks] = await Promise.all([rest('bni_cards?select=id,data'), rest('bni_links?select=id,from_id,to_id,note'), rest('bni_contacts?select=id,data')]);
+    const remote = { cards: cs.map(r => r.data), links: ls.map(l => ({ id: l.id, from: l.from_id, to: l.to_id, note: l.note })), contacts: ks.map(r => r.data) };
+    remoteCards = new Set(cs.map(r => r.id)); remoteLinks = new Set(ls.map(l => l.id)); remoteContacts = new Set(ks.map(r => r.id));
     if (!localStorage.getItem('bni-synced')) { // pierwsze uruchomienie: dołącz lokalne wizytówki
       state.cards.forEach(c => { if (!remoteCards.has(c.id)) remote.cards.push(c); });
       state.links.forEach(l => { if (!remoteLinks.has(l.id)) remote.links.push(l); });
+      (state.contacts || []).forEach(c => { if (!remoteContacts.has(c.id)) remote.contacts.push(c); });
       try { localStorage.setItem('bni-synced', '1'); } catch (_) {}
       state = remote; dirty = true; await push();
     } else state = remote;
@@ -69,7 +70,11 @@ function push() {
   pushing = pushing.then(async () => {
     try {
       const up = { method: 'POST', headers: Object.assign({}, H, { Prefer: 'resolution=merge-duplicates,return=minimal' }) };
-      const ids = new Set(snap.cards.map(c => c.id)), lids = new Set(snap.links.map(l => l.id));
+      const ids = new Set(snap.cards.map(c => c.id)), lids = new Set(snap.links.map(l => l.id)), kids = new Set((snap.contacts || []).map(c => c.id));
+      const delK = [...remoteContacts].filter(i => !kids.has(i));
+      if (delK.length) await rest('bni_contacts?id=in.(' + delK.map(encodeURIComponent).join(',') + ')', { method: 'DELETE' });
+      if (kids.size) await rest('bni_contacts?on_conflict=id', Object.assign({ body: JSON.stringify(snap.contacts.map(c => ({ id: c.id, data: c, updated_at: new Date().toISOString() }))) }, up));
+      remoteContacts = kids;
       const delL = [...remoteLinks].filter(i => !lids.has(i)), delC = [...remoteCards].filter(i => !ids.has(i));
       if (delL.length) await rest('bni_links?id=in.(' + delL.map(encodeURIComponent).join(',') + ')', { method: 'DELETE' });
       if (delC.length) await rest('bni_cards?id=in.(' + delC.map(encodeURIComponent).join(',') + ')', { method: 'DELETE' });
@@ -101,6 +106,9 @@ function show(view) {
   if (view === 'editor') renderEditor();
   if (view === 'preview') renderPreview();
   if (view === 'links') renderLinks();
+  if (view === 'contacts' && window.BNIContacts) window.BNIContacts.render();
+  if (view === 'scan' && window.BNIContacts) window.BNIContacts.mountScan();
+  try { window.scrollTo(0, 0); } catch (e) {}
 }
 $('#tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) show(b.dataset.view); });
 
@@ -146,7 +154,7 @@ function renderTable(key, cols) {
   const c = cur(), rows = c[key];
   $('#tbl-' + key).className = 'edit';
   $('#tbl-' + key).innerHTML = `<tr><th>#</th>${cols.map(x => `<th>${x[1]}</th>`).join('')}<th></th></tr>` +
-    rows.map((r, i) => `<tr><td>${i + 1}</td>${cols.map(([k]) => `<td><input data-t="${key}" data-i="${i}" data-k="${k}" value="${esc(r[k] || '')}"></td>`).join('')}<td><button class="small" data-del="${key}" data-i="${i}">✕</button></td></tr>`).join('');
+    rows.map((r, i) => `<tr data-drop="${key}" data-i="${i}"><td class="grip" data-grip title="Przeciągnij, aby zmienić kolejność" aria-label="Przeciągnij wiersz ${i + 1}">⋮⋮ ${i + 1}</td>${cols.map(([k]) => `<td><input data-t="${key}" data-i="${i}" data-k="${k}" value="${esc(r[k] || '')}"></td>`).join('')}<td><button class="small" data-del="${key}" data-i="${i}">✕</button></td></tr>`).join('');
   $('#add-' + key).disabled = rows.length >= MAX_ROWS;
 }
 $('#editor').addEventListener('input', e => {
@@ -362,6 +370,7 @@ async function importFromHash() {
 }
 
 renderList();
-pull().then(() => { renderList(); return importFromHash(); });
+window.BNI = { get state() { return state; }, setCurrent: id => { currentId = id; }, save, toast, uid, esc, $, $$, cur, getCard, show, renderTable, renderEditor, OFFERED_COLS, SOUGHT_COLS, MAX_ROWS, cloud: () => cloud };
+pull().then(() => { renderList(); if (window.BNIContacts) window.BNIContacts.onData(); return importFromHash(); });
 if (typeof module !== 'undefined') module.exports = { suggestions };
 })();

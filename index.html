@@ -4,35 +4,80 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BNI Connector – rozszerzone wizytówki</title>
+<meta name="theme-color" content="#16161a">
+<meta name="color-scheme" content="light dark">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="scan.css">
+<link rel="stylesheet" href="ui.css">
 </head>
 <body>
-<header class="top">
-  <h1>BNI<span>Connector</span></h1><small id="sync" title="Synchronizacja z bazą"></small>
-  <nav id="tabs">
-    <button data-view="cards" class="active">Wizytówki</button>
-    <button data-view="editor">Edytor</button>
-    <button data-view="preview">Podgląd / druk</button>
-    <button data-view="links">Połączenia</button>
+<div class="app">
+<aside class="rail">
+  <div class="brand"><span class="logo-mark">BNI</span><span class="brand-name">Connector</span></div>
+  <nav id="tabs" aria-label="Główna nawigacja">
+    <button data-view="cards" class="active"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h6M7 14h4"/></svg><span>Wizytówki</span></button>
+    <button data-view="contacts"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14a5 5 0 0 1 4.5 5"/></svg><span>Kontakty</span></button>
+    <button data-view="scan"><svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16"/></svg><span>Skan</span></button>
+    <button data-view="editor"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg><span>Edytor</span></button>
+    <button data-view="preview"><svg viewBox="0 0 24 24"><path d="M7 9V4h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="7" y="14" width="10" height="6"/></svg><span>Druk</span></button>
+    <button data-view="links"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 11l7.6-4M8.2 13l7.6 4"/></svg><span>Sieć</span></button>
   </nav>
-</header>
+  <div class="rail-foot">
+    <button id="btn-palette" class="ghost" title="Szukaj i polecenia (Ctrl/⌘ + K)"><span>Szukaj…</span><kbd>⌘K</kbd></button>
+    <button id="btn-theme" class="ghost" title="Zmień motyw" aria-label="Zmień motyw">◐ Motyw</button>
+    <small id="sync" title="Synchronizacja z bazą"></small>
+  </div>
+</aside>
 
 <main>
   <!-- LISTA -->
   <section id="view-cards" class="view active">
-    <div class="bar">
-      <button class="primary" id="btn-new">+ Nowa wizytówka</button>
-      <button id="btn-demo">Wczytaj przykład</button>
-      <button id="btn-export">Eksport JSON</button>
-      <label class="btn">Import JSON<input type="file" id="file-import" accept=".json,application/json" hidden></label>
-    </div>
+    <header class="page-head"><div><h1>Wizytówki</h1><p class="sub">Twoje rozszerzone, składane wizytówki z listami TOP 20.</p></div>
+      <div class="actions">
+        <button class="primary" id="btn-new">+ Nowa wizytówka</button>
+        <button id="btn-demo">Wczytaj przykład</button>
+        <button id="btn-export">Eksport JSON</button>
+        <label class="btn">Import JSON<input type="file" id="file-import" accept=".json,application/json" hidden></label>
+      </div>
+    </header>
     <div id="card-list" class="grid"></div>
-    <p class="hint">Dane zapisują się lokalnie w przeglądarce. Użyj „Eksport JSON”, aby zrobić kopię.</p>
+    <p class="hint">Dane synchronizują się z bazą (status w menu). „Eksport JSON” robi kopię zapasową.</p>
+  </section>
+
+  <!-- KONTAKTY -->
+  <section id="view-contacts" class="view">
+    <header class="page-head"><div><h1>Magazyn kontaktów</h1><p class="sub" id="ct-count"></p></div>
+      <div class="actions">
+        <button class="primary" id="ct-new">+ Nowy kontakt</button>
+        <button id="ct-scan">Zeskanuj wizytówkę</button>
+        <label class="btn">Import vCard / CSV<input type="file" id="ct-import" accept=".vcf,.csv,text/vcard,text/csv" hidden></label>
+        <button id="ct-export">Eksport CSV</button>
+        <button id="ct-demo">Wczytaj przykładowe</button>
+      </div>
+    </header>
+    <div class="toolbar">
+      <input id="ct-search" type="search" placeholder="Szukaj: imię, firma, branża, e-mail, tag…" aria-label="Szukaj kontaktów">
+      <select id="ct-rel" aria-label="Filtr relacji"><option value="">Wszystkie relacje</option><option>Znajomy / Klient</option><option>Znajomy / Partner biznesowy</option></select>
+      <select id="ct-tag" aria-label="Filtr tagu"><option value="">Wszystkie tagi</option></select>
+      <select id="ct-sort" aria-label="Sortowanie"><option value="name">Sortuj: nazwisko</option><option value="company">Sortuj: firma</option><option value="new">Sortuj: najnowsze</option></select>
+    </div>
+    <div id="ct-list" class="ct-list" aria-live="polite"></div>
+    <dialog id="ct-dialog"><form method="dialog" id="ct-form" class="ct-form"></form></dialog>
+  </section>
+
+  <!-- SKAN -->
+  <section id="view-scan" class="view">
+    <header class="page-head"><div><h1>Skanowanie wizytówek</h1><p class="sub">Zdjęcie lub plik vCard → zweryfikowany kontakt w magazynie.</p></div></header>
+    <div id="scan-root"></div>
   </section>
 
   <!-- EDYTOR -->
   <section id="view-editor" class="view">
+    <header class="page-head"><div><h1>Edytor wizytówki</h1><p class="sub">Przeciągnij kontakty z magazynu do list TOP 20.</p></div></header>
     <div id="editor-empty" class="hint">Wybierz lub utwórz wizytówkę na zakładce „Wizytówki”.</div>
+    <div class="editor-grid">
     <div id="editor" hidden>
       <fieldset>
         <legend>Dane (awers wizytówki)</legend>
@@ -72,10 +117,13 @@
         <button class="danger" id="btn-del">Usuń wizytówkę</button>
       </div>
     </div>
+    <aside id="ct-tray" class="tray" aria-label="Magazyn kontaktów do przeciągania" hidden></aside>
+    </div>
   </section>
 
   <!-- PODGLĄD -->
   <section id="view-preview" class="view">
+    <header class="page-head"><div><h1>Podgląd i druk</h1><p class="sub">Dwustronny pasek 90 × 56 mm z kodem QR.</p></div></header>
     <div class="bar">
       <select id="preview-card"></select>
       <select id="preview-layout" title="Układ wydruku">
@@ -94,6 +142,7 @@
 
   <!-- POŁĄCZENIA -->
   <section id="view-links" class="view">
+    <header class="page-head"><div><h1>Sieć połączeń</h1><p class="sub">Kto kogo szuka i kto kogo oferuje.</p></div></header>
     <div class="split">
       <div>
         <h2>Nowe połączenie</h2>
@@ -118,6 +167,8 @@
     </div>
   </section>
 </main>
+</div>
+<dialog id="palette"><div class="pal"><input id="pal-input" placeholder="Szukaj kontaktów, wizytówek i poleceń…" aria-label="Paleta poleceń"><ul id="pal-list" role="listbox"></ul></div></dialog>
 
 <dialog id="qr-modal">
   <div class="qrbox">
@@ -134,6 +185,8 @@
 <div id="toast"></div>
 <script src="config.js"></script>
 <script src="qrcode.js"></script>
+<script src="scan.js"></script>
 <script src="app.js"></script>
+<script src="contacts.js"></script>
 </body>
 </html>

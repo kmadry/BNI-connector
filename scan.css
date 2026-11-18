@@ -1,0 +1,135 @@
+/* scan.css – style modułu zaczytywania wizytówek (prefiks .scan-) */
+.scan {
+  --scan-surface: var(--surface, #fff);
+  --scan-surface2: #f6f6f8;
+  --scan-text: var(--text, #16161a);
+  --scan-muted: var(--muted, #6b6b75);
+  --scan-line: var(--line, #e3e3e8);
+  --scan-accent: var(--accent, #e8473f);
+  --scan-radius: var(--radius, 12px);
+  --scan-low-bg: #fff4d6;
+  --scan-low-line: #d99a00;
+  --scan-dup-bg: #fdecea;
+  --scan-ok: #1f7a3d;
+  color: var(--scan-text);
+  font: inherit;
+  line-height: 1.45;
+  box-sizing: border-box;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .scan {
+    --scan-surface: var(--surface, #1c1c21);
+    --scan-surface2: #26262c;
+    --scan-text: var(--text, #f2f2f5);
+    --scan-muted: var(--muted, #a0a0ab);
+    --scan-line: var(--line, #3a3a42);
+    --scan-low-bg: #3b3115;
+    --scan-low-line: #e0b030;
+    --scan-dup-bg: #3a1f1d;
+  }
+}
+[data-theme="dark"] .scan {
+  --scan-surface: var(--surface, #1c1c21);
+  --scan-surface2: #26262c;
+  --scan-text: var(--text, #f2f2f5);
+  --scan-muted: var(--muted, #a0a0ab);
+  --scan-line: var(--line, #3a3a42);
+  --scan-low-bg: #3b3115;
+  --scan-low-line: #e0b030;
+  --scan-dup-bg: #3a1f1d;
+}
+.scan *, .scan *::before, .scan *::after { box-sizing: border-box; }
+.scan-hidden { display: none !important; }
+.scan-muted { color: var(--scan-muted); margin: 0; }
+
+/* strefa wgrywania */
+.scan-drop {
+  border: 2px dashed var(--scan-line);
+  border-radius: var(--scan-radius);
+  background: var(--scan-surface);
+  padding: 20px 16px;
+  text-align: center;
+  transition: border-color .15s, background .15s;
+}
+.scan-drop:focus-visible, .scan-drop--over { outline: none; border-color: var(--scan-accent); background: var(--scan-surface2); }
+.scan-drop-title { margin: 0 0 4px; font-weight: 600; }
+.scan-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
+.scan-privacy { margin: 10px 0 0; font-size: .875rem; color: var(--scan-muted); }
+
+/* przyciski */
+.scan-btn {
+  min-height: 44px; min-width: 44px; padding: 0 16px;
+  border: 1px solid var(--scan-line); border-radius: var(--scan-radius);
+  background: var(--scan-surface); color: var(--scan-text);
+  font: inherit; font-weight: 600; cursor: pointer;
+}
+.scan-btn:hover:not(:disabled) { border-color: var(--scan-accent); }
+.scan-btn:focus-visible, .scan-input:focus-visible, .scan-check:focus-visible, .scan-textarea:focus-visible {
+  outline: 3px solid var(--scan-accent); outline-offset: 2px;
+}
+.scan-btn:disabled { opacity: .5; cursor: not-allowed; }
+.scan-btn--primary { background: var(--scan-accent); border-color: var(--scan-accent); color: #fff; }
+.scan-btn--ghost { background: transparent; }
+.scan-btn--small { padding: 0 12px; font-size: .9rem; }
+
+/* wklejanie */
+.scan-paste { margin-top: 12px; border: 1px solid var(--scan-line); border-radius: var(--scan-radius); background: var(--scan-surface); padding: 0 12px 12px; }
+.scan-paste > summary { cursor: pointer; padding: 12px 0; min-height: 44px; font-weight: 600; }
+.scan-paste .scan-actions { justify-content: flex-start; }
+.scan-textarea, .scan-input {
+  width: 100%; min-height: 44px; padding: 8px 10px;
+  border: 1px solid var(--scan-line); border-radius: 8px;
+  background: var(--scan-surface); color: var(--scan-text); font: inherit;
+}
+.scan-textarea { resize: vertical; }
+.scan-label { display: block; font-size: .8125rem; color: var(--scan-muted); margin-bottom: 4px; font-weight: 600; }
+
+/* postęp */
+.scan-progress-box { display: grid; gap: 8px; margin-top: 12px; padding: 12px; border: 1px solid var(--scan-line); border-radius: var(--scan-radius); background: var(--scan-surface); }
+.scan-progress { width: 100%; height: 10px; accent-color: var(--scan-accent); }
+.scan-progress-text { font-size: .9rem; overflow-wrap: anywhere; }
+.scan-live { min-height: 1.4em; margin-top: 8px; font-size: .9rem; color: var(--scan-muted); }
+
+/* pasek akcji */
+.scan-bar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;
+  position: sticky; top: 0; z-index: 2; margin-top: 12px; padding: 10px 12px;
+  border: 1px solid var(--scan-line); border-radius: var(--scan-radius); background: var(--scan-surface);
+}
+.scan-bar .scan-actions { margin-top: 0; justify-content: flex-start; }
+.scan-count { font-weight: 600; }
+
+/* karty weryfikacji */
+.scan-list { display: grid; gap: 12px; margin-top: 12px; }
+.scan-card { border: 1px solid var(--scan-line); border-radius: var(--scan-radius); background: var(--scan-surface); padding: 12px; }
+.scan-card--dup { border-color: var(--scan-accent); }
+.scan-card--skipped { opacity: .55; }
+.scan-card--error { border-color: var(--scan-low-line); }
+.scan-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.scan-selectlabel { display: flex; align-items: center; gap: 6px; min-height: 44px; font-weight: 600; cursor: pointer; overflow-wrap: anywhere; }
+.scan-check { width: 22px; height: 22px; accent-color: var(--scan-accent); flex: none; }
+.scan-dup { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px; margin-bottom: 10px; border-radius: 8px; background: var(--scan-dup-bg); }
+.scan-dup .scan-actions { margin-top: 0; }
+.scan-badge { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--scan-accent); color: #fff; font-size: .8125rem; font-weight: 700; }
+.scan-dup-text { font-size: .9rem; }
+.scan-error { margin: 0 0 10px; padding: 8px 10px; border-radius: 8px; background: var(--scan-low-bg); }
+
+.scan-card-body { display: grid; gap: 12px; grid-template-columns: 1fr; }
+.scan-thumb { margin: 0; }
+.scan-thumb img { display: block; width: 100%; max-height: 220px; object-fit: contain; border-radius: 8px; border: 1px solid var(--scan-line); background: var(--scan-surface2); }
+.scan-thumb-empty { padding: 16px; text-align: center; border-radius: 8px; background: var(--scan-surface2); color: var(--scan-muted); overflow-wrap: anywhere; font-size: .9rem; }
+.scan-raw { margin-top: 6px; font-size: .8125rem; color: var(--scan-muted); }
+.scan-raw summary { cursor: pointer; min-height: 32px; }
+.scan-raw pre { white-space: pre-wrap; margin: 4px 0 0; max-height: 160px; overflow: auto; }
+
+.scan-fields { display: grid; gap: 10px; grid-template-columns: 1fr; }
+.scan-field { min-width: 0; padding: 6px; border-radius: 8px; border: 1px solid transparent; }
+.scan-field--low { background: var(--scan-low-bg); border-color: var(--scan-low-line); }
+.scan-hint { display: block; margin-top: 4px; font-size: .75rem; color: var(--scan-muted); }
+
+@media (min-width: 640px) {
+  .scan-card-body { grid-template-columns: 220px 1fr; }
+  .scan-fields { grid-template-columns: 1fr 1fr; }
+  .scan-field--wide { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) { .scan-drop { transition: none; } }
