@@ -67,6 +67,7 @@
 
       <div class="bar">
         <button class="primary" id="btn-to-preview">Podgląd →</button>
+        <button data-qr-open>Kod QR</button>
         <button id="btn-dup">Duplikuj</button>
         <button class="danger" id="btn-del">Usuń wizytówkę</button>
       </div>
@@ -83,6 +84,7 @@
       </select>
       <label class="chk"><input type="checkbox" id="opt-qr" checked> Kod QR</label>
       <button class="primary" id="btn-print">Drukuj / PDF</button>
+      <button data-qr-open>Pokaż kod QR</button>
       <button id="btn-share">Kopiuj link online</button>
     </div>
     <p class="hint" id="qr-info"></p>
@@ -117,6 +119,18 @@
   </section>
 </main>
 
+<dialog id="qr-modal">
+  <div class="qrbox">
+    <h2 id="qr-name"></h2>
+    <div id="qr-big"></div>
+    <p class="hint" id="qr-url"></p>
+    <div class="bar">
+      <button class="primary" id="qr-copy">Kopiuj link</button>
+      <button id="qr-dl">Pobierz SVG</button>
+      <button id="qr-close">Zamknij</button>
+    </div>
+  </div>
+</dialog>
 <div id="toast"></div>
 <script src="config.js"></script>
 <script src="qrcode.js"></script>

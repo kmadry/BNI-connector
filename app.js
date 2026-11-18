@@ -108,12 +108,13 @@ function renderList() {
   el.innerHTML = state.cards.map(c => {
     const n = state.links.filter(l => l.from === c.id || l.to === c.id).length;
     return `<div class="tile" data-id="${c.id}">
-      <div class="hd" style="border-left-color:${esc(c.accent)}"><b>${esc(c.name || 'Bez nazwy')}</b><small>${esc(c.group)}${c.city ? ' · ' + esc(c.city) : ''}</small></div>
+      <div class="hd" style="border-left-color:${esc(c.accent)}"><button class="small qrb" data-qr-id="${c.id}">Kod QR</button><b>${esc(c.name || 'Bez nazwy')}</b><small>${esc(c.group)}${c.city ? ' · ' + esc(c.city) : ''}</small></div>
       <div class="bd">${esc(c.company) || '—'}<br>Kontakty: ${filled(c.offered).length} oferowane · ${filled(c.sought).length} poszukiwane · ${n} połączeń</div>
     </div>`;
   }).join('');
 }
 $('#card-list').addEventListener('click', e => {
+  const q = e.target.closest('[data-qr-id]'); if (q) return showQr(q.dataset.qrId);
   const t = e.target.closest('.tile'); if (!t) return;
   currentId = t.dataset.id; show('editor');
 });
@@ -212,7 +213,7 @@ const bytesB64 = u => btoa(String.fromCharCode(...u)).replace(/\+/g, '-').replac
 const b64Bytes = t => Uint8Array.from(atob(t.replace(/-/g, '+').replace(/_/g, '/')), ch => ch.charCodeAt(0));
 function baseUrl() { return location.href.split('#')[0]; }
 async function onlineUrl(c) {
-  if (cloud) { dirty = true; await push(); if (remoteCards.has(c.id)) return baseUrl() + '#c=' + encodeURIComponent(c.id); }
+  if (cloud) { if (!remoteCards.has(c.id)) dirty = true; await push(); if (remoteCards.has(c.id)) return baseUrl() + '#c=' + encodeURIComponent(c.id); }
   const slim = { id: c.id, name: c.name, group: c.group, city: c.city, company: c.company, phone: c.phone, phone2: c.phone2, email: c.email, accent: c.accent,
     qa: c.qa, offered: filled(c.offered), sought: filled(c.sought) };
   return baseUrl() + '#card=' + await pack(JSON.stringify(slim));
@@ -303,6 +304,26 @@ function drawGraph() {
     state.links.map(l => { const [x1, y1] = pos[l.from] || [0, 0], [x2, y2] = pos[l.to] || [0, 0]; const dx = x2 - x1, dy = y2 - y1, d = Math.hypot(dx, dy) || 1; return `<line x1="${x1 + dx / d * 24}" y1="${y1 + dy / d * 24}" x2="${x2 - dx / d * 28}" y2="${y2 - dy / d * 28}" stroke="#888" stroke-width="2" marker-end="url(#ar)"/>`; }).join('') +
     state.cards.map(c => { const [x, y] = pos[c.id]; return `<g><circle cx="${x}" cy="${y}" r="22" fill="${esc(c.accent)}"/><text x="${x}" y="${y + 4}" style="fill:#fff;font-weight:700">${esc((c.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase())}</text><text x="${x}" y="${y + 40}">${esc(c.name || 'Bez nazwy')}</text></g>`; }).join('');
 }
+
+/* ---------- kod QR ze strony ---------- */
+let qrCur = null;
+async function showQr(id) {
+  const c = getCard(id); if (!c) return toast('Wybierz wizytówkę');
+  try {
+    const url = await onlineUrl(c); qrCur = { c, url };
+    $('#qr-name').textContent = c.name || 'Wizytówka'; $('#qr-big').innerHTML = qrSvg(url); $('#qr-url').textContent = url;
+    $('#qr-modal').showModal();
+  } catch (e) { toast('Za dużo danych na kod QR'); }
+}
+$$('[data-qr-open]').forEach(b => b.onclick = () => showQr(currentId));
+$('#qr-close').onclick = () => $('#qr-modal').close();
+$('#qr-modal').addEventListener('click', e => { if (e.target.id === 'qr-modal') e.target.close(); });
+$('#qr-copy').onclick = async () => { try { await navigator.clipboard.writeText(qrCur.url); toast('Link skopiowany'); } catch (e) { prompt('Skopiuj link:', qrCur.url); } };
+$('#qr-dl').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([qrSvg(qrCur.url)], { type: 'image/svg+xml' }));
+  a.download = 'qr-' + (qrCur.c.name || 'wizytowka').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.svg'; a.click();
+};
 
 /* ---------- eksport / import ---------- */
 $('#btn-export').onclick = () => {

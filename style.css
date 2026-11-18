@@ -94,4 +94,10 @@ h2{font-size:17px;margin:18px 0 8px}
   .sheet .paper{zoom:1!important;box-shadow:none;width:210mm;padding:10mm}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+dialog#qr-modal{border:0;border-radius:16px;padding:0;max-width:min(92vw,420px);width:100%}
+dialog#qr-modal::backdrop{background:rgba(0,0,0,.6)}
+.qrbox{padding:18px;text-align:center}.qrbox h2{margin:0 0 10px}
+#qr-big{background:#fff;padding:10px;border:1px solid var(--line);border-radius:12px}#qr-big svg{width:100%;height:auto;display:block}
+#qr-url{word-break:break-all;max-height:4.5em;overflow:auto}.qrbox .bar{justify-content:center}
+.tile .qrb{float:right;margin-left:8px}
 #sync{color:#bbb;font-size:12px}#sync.ok{color:#7ddc8a}#sync.err{color:#ffb4ab}
