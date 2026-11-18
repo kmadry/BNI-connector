@@ -22,7 +22,7 @@ function snack(msg, undo) {
   let el = $('#snack');
   if (!el) { el = document.createElement('div'); el.id = 'snack'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
   el.innerHTML = `<span>${esc(msg)}</span>${undo ? '<button type="button">Cofnij</button>' : ''}`;
-  el.classList.add('show');
+  el.classList.add('show'); const tt = $('#toast'); if (tt) tt.classList.remove('show');
   if (undo) el.querySelector('button').onclick = () => { undo(); el.classList.remove('show'); };
   clearTimeout(snackT); snackT = setTimeout(() => el.classList.remove('show'), undo ? 6000 : 2500);
 }
@@ -123,7 +123,7 @@ function addContacts(items, label) {
     const dup = ex.some(x => (arr(c.emails)[0] && arr(x.emails).includes(arr(c.emails)[0])) || (fullName(c) !== 'Bez nazwy' && fullName(x).toLowerCase() === fullName(c).toLowerCase() && (x.company || '') === (c.company || '')));
     if (dup) { skipped++; return; } ex.push(c); added++;
   });
-  B.save(); render(); renderTray(); snack(`${label || 'Dodano'}: ${added}${skipped ? `, pominięto duplikaty: ${skipped}` : ''}`);
+  B.save(); render(); renderTray(); snack(added ? `${label || 'Dodano'}: ${added}${skipped ? ` (pominięto duplikaty: ${skipped})` : ''}` : 'Te kontakty są już w magazynie');
   return added;
 }
 $('#ct-import').onchange = async e => {
@@ -189,8 +189,8 @@ function renderTray() {
   const rows = list().filter(c => matches(c, q)).slice(0, 80);
   tray.innerHTML = `<div class="tray-head"><h3>Magazyn kontaktów</h3><small>${list().length} kontaktów</small></div>
     <input id="tray-q" type="search" placeholder="Szukaj w magazynie…" value="${esc(q)}" aria-label="Szukaj w magazynie">
-    <p class="hint">Chwyć <b>⋮⋮</b> i upuść na wiersz tabeli <b>TOP 20</b> (mysz i dotyk). Przyciski + działają z klawiatury.</p>
-    <div class="tray-list">${rows.length ? rows.map(c => `<div class="tc" data-id="${esc(c.id)}"><span class="dh" data-drag="${esc(c.id)}" role="button" tabindex="0" aria-label="Przeciągnij ${esc(fullName(c))}" title="Przeciągnij">⋮⋮</span>${avatar(c)}<span class="tc-main"><b>${esc(fullName(c))}</b><small>${esc(c.company || c.industry || '')}</small></span><span class="tc-act"><button class="small" data-add="offered" aria-label="Dodaj ${esc(fullName(c))} do oferowanych" title="Do oferowanych">+O</button><button class="small" data-add="sought" aria-label="Dodaj ${esc(fullName(c))} do poszukiwanych" title="Do poszukiwanych">+S</button></span></div>`).join('') : `<div class="empty small"><p>${list().length ? 'Brak wyników.' : 'Magazyn jest pusty.'}</p>${list().length ? '' : '<button class="small primary" data-demo>Wczytaj przykładowe</button> <button class="small" data-goscan>Skanuj</button>'}</div>`}</div>`;
+    <p class="hint hint-drag">Chwyć <b>⋮⋮</b> i upuść na wiersz tabeli <b>TOP 20</b>. Możesz też użyć przycisków poniżej (działają z klawiatury).</p><p class="hint hint-tap">Dotknij <b>+ Oferuję</b> lub <b>+ Szukam</b>, aby dodać kontakt do list TOP 20.</p>
+    <div class="tray-list">${rows.length ? rows.map(c => `<div class="tc" data-id="${esc(c.id)}"><span class="dh" data-drag="${esc(c.id)}" role="button" tabindex="0" aria-label="Przeciągnij ${esc(fullName(c))}" title="Przeciągnij">⋮⋮</span>${avatar(c)}<span class="tc-main"><b>${esc(fullName(c))}</b><small>${esc(c.company || c.industry || '')}</small></span><span class="tc-act"><button class="small" data-add="offered" aria-label="Dodaj ${esc(fullName(c))} do oferowanych" title="Dodaj do TOP 20 oferowanych">+ Oferuję</button><button class="small" data-add="sought" aria-label="Dodaj ${esc(fullName(c))} do poszukiwanych" title="Dodaj do TOP 20 poszukiwanych">+ Szukam</button></span></div>`).join('') : `<div class="empty small"><p>${list().length ? 'Brak wyników.' : 'Magazyn jest pusty.'}</p>${list().length ? '' : '<button class="small primary" data-demo>Wczytaj przykładowe</button> <button class="small" data-goscan>Skanuj</button>'}</div>`}</div>`;
   const ol = $('#tbl-offered') && $('#tbl-offered').closest('.tablewrap'), sl = $('#tbl-sought') && $('#tbl-sought').closest('.tablewrap');
   if (ol) ol.dataset.zone = 'offered'; if (sl) sl.dataset.zone = 'sought';
 }

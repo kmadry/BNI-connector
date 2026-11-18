@@ -158,3 +158,42 @@ dialog#qr-modal{max-width:min(92vw,420px)}
   .rail,.page-head,.tray,#snack,dialog,.drag-ghost{display:none!important}
   .app{display:block}main{padding:0;max-width:none}
 }
+
+/* ===== Poprawki po recenzji UX ===== */
+:root{--accent-strong:#d1352d}
+button.primary,.rail nav button.active,.drag-ghost{background:var(--accent-strong);border-color:var(--accent-strong)}
+.badge{color:#b5281f}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .badge{color:#ff9a93}}
+:root[data-theme=dark] .badge{color:#ff9a93}
+/* jednolite powiadomienia */
+#toast,#snack{position:fixed;left:50%;transform:translateX(-50%);width:max-content;max-width:min(92vw,420px);z-index:9000;background:#17171c;color:#fff;border:1px solid #2c2c35;border-radius:14px;box-shadow:0 18px 40px rgba(0,0,0,.4);text-align:center}
+#toast{padding:10px 16px;bottom:24px;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.show{opacity:1}
+#snack{transform:translate(-50%,20px)}#snack.show{transform:translate(-50%,0)}
+.bar select{width:auto;min-width:220px;max-width:100%}
+#qr-info{word-break:break-all}
+#scan-root summary{min-height:44px;display:flex;align-items:center;cursor:pointer}
+table.edit th:nth-child(n+2){min-width:130px}
+table.edit input{text-overflow:ellipsis}
+.ct-form .bar{position:sticky;bottom:0;background:var(--surface);padding:12px 0 0;margin-top:16px;border-top:1px solid var(--line)}
+.ct-form{max-height:92dvh;overflow:auto}
+.tile:focus-visible{outline:2px solid var(--accent);outline-offset:3px;transform:translateY(-3px)}
+.theme-ico{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;vertical-align:-3px;margin-right:6px}
+.hint-tap{display:none}
+@media (max-width:1000px){
+  .editor-grid{display:flex;flex-direction:column;align-items:stretch}
+  .editor-grid>*{min-width:0;width:100%}
+}
+@media (max-width:600px){.form{grid-template-columns:1fr}}
+@media (max-width:860px){
+  .ct-meta .chip:nth-child(n+3){display:none}
+  .ct-act .small{flex:1}
+  .toolbar select:last-child{grid-column:1/-1}
+}
+@media (pointer:coarse){
+  button,.btn,select,input:not([type=checkbox]),textarea{min-height:44px}
+  button.small{min-height:44px;padding:8px 14px}
+  table.edit input{min-height:44px}
+  .tray .hint-drag{display:none}.tray .hint-tap{display:block}
+}
+@media (max-width:820px){#sync.ok{display:none}}

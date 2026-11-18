@@ -31,7 +31,7 @@ function load() {
   return { cards: [], links: [], contacts: [] };
 }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} schedulePush(); }
-function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2200); }
+function toast(msg) { const sn = document.getElementById('snack'); if (sn) sn.classList.remove('show'); const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2200); }
 
 /* ---------- chmura (Supabase REST) ---------- */
 const CFG = window.BNI_CONFIG || {};
@@ -115,15 +115,16 @@ $('#tabs').addEventListener('click', e => { const b = e.target.closest('button')
 /* ---------- lista ---------- */
 function renderList() {
   const el = $('#card-list');
-  if (!state.cards.length) { el.innerHTML = '<p class="hint">Brak wizytówek. Utwórz pierwszą lub wczytaj przykład.</p>'; return; }
+  if (!state.cards.length) { el.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-ico">🪪</div><h3>Nie masz jeszcze wizytówek</h3><p>Utwórz pierwszą albo wczytaj przykładowe dane.</p></div>'; return; }
   el.innerHTML = state.cards.map(c => {
     const n = state.links.filter(l => l.from === c.id || l.to === c.id).length;
-    return `<div class="tile" data-id="${c.id}">
+    return `<div class="tile" data-id="${c.id}" tabindex="0" role="button">
       <div class="hd" style="border-left-color:${esc(c.accent)}"><button class="small qrb" data-qr-id="${c.id}">Kod QR</button><b>${esc(c.name || 'Bez nazwy')}</b><small>${esc(c.group)}${c.city ? ' · ' + esc(c.city) : ''}</small></div>
-      <div class="bd">${esc(c.company) || '—'}<br>Kontakty: ${filled(c.offered).length} oferowane · ${filled(c.sought).length} poszukiwane · ${n} połączeń</div>
+      <div class="bd">${c.company ? esc(c.company) + '<br>' : ''}Kontakty: ${filled(c.offered).length} oferowane · ${filled(c.sought).length} poszukiwane · ${n} połączeń</div>
     </div>`;
   }).join('');
 }
+$('#card-list').addEventListener('keydown', e => { const t = e.target.closest('.tile'); if (t && e.key === 'Enter') { currentId = t.dataset.id; show('editor'); } });
 $('#card-list').addEventListener('click', e => {
   const q = e.target.closest('[data-qr-id]'); if (q) return showQr(q.dataset.qrId);
   const t = e.target.closest('.tile'); if (!t) return;
