@@ -77,9 +77,18 @@
   <section id="view-preview" class="view">
     <div class="bar">
       <select id="preview-card"></select>
+      <select id="preview-layout" title="Układ wydruku">
+        <option value="a4">Podgląd wydruku: A4 (2 kolumny)</option>
+        <option value="strip">Podgląd: pasek (składanka)</option>
+      </select>
+      <label class="chk"><input type="checkbox" id="opt-qr" checked> Kod QR</label>
       <button class="primary" id="btn-print">Drukuj / PDF</button>
-      <button id="btn-share">Kopiuj link do udostępnienia</button>
+      <button id="btn-share">Kopiuj link online</button>
     </div>
+    <div class="bar">
+      <label class="grow">Adres strony dla kodu QR <input id="qr-base" placeholder="https://twoja-domena.vercel.app/"></label>
+    </div>
+    <p class="hint" id="qr-info"></p>
     <div id="sheet" class="sheet"></div>
     <p class="hint">Panele są ułożone jeden pod drugim w kolejności składania (zakładki harmonijkowej). Drukuj w skali 100%.</p>
   </section>
@@ -112,6 +121,7 @@
 </main>
 
 <div id="toast"></div>
+<script src="qrcode.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

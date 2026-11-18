@@ -46,13 +46,22 @@ h2{font-size:17px;margin:18px 0 8px}
 #toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:20px;opacity:0;transition:.2s;pointer-events:none;z-index:9}
 #toast.show{opacity:1}
 
+.chk{display:flex;align-items:center;gap:6px}.chk input{width:auto}
+.grow{flex:1;min-width:240px;display:flex;flex-direction:column;font-size:13px;color:var(--muted)}
 /* ---- Arkusz wizytówki ---- */
-.sheet{display:flex;flex-direction:column;align-items:center;gap:0;background:#888;padding:14px;border-radius:12px}
+.sheet{display:flex;flex-direction:column;align-items:center;background:#888;padding:14px;border-radius:12px;overflow:hidden}
+.sheet-card{display:flex;flex-direction:column}
+.sheet.a4 .paper{width:210mm;min-height:297mm;background:#fff;padding:5mm;box-shadow:0 2px 10px rgba(0,0,0,.5);transform-origin:top left}
+.sheet.a4 .sheet-card{display:grid;grid-template-columns:repeat(2,100mm);justify-content:center;align-content:start;gap:0}
+.sheet.a4 .panel{outline:1px dashed #999;outline-offset:-1px}
+.paper-label{color:#fff;font-size:12px;margin:0 0 6px}
 .panel{width:100mm;background:var(--dark);color:#fff;padding:5mm;break-inside:avoid;page-break-inside:avoid;border-bottom:1px solid #000;font-size:8pt}
 .panel.cover{min-height:52mm;display:flex;flex-direction:column;justify-content:space-between}
 .panel.cover .logo{font-weight:900;font-size:28pt;color:var(--acc,var(--accent));letter-spacing:-1px}
 .panel.cover .nm{font-size:16pt;font-weight:800;text-transform:uppercase;line-height:1.1}
 .panel.cover .sub{opacity:.85;font-size:9pt;margin-top:2mm}
+.cover .row{display:flex;justify-content:space-between;align-items:flex-end;gap:4mm}
+.cover .qr{background:#fff;padding:2mm;width:28mm;text-align:center;color:#111;font-size:5.5pt;flex:none}.cover .qr svg{width:100%;height:auto;display:block}
 .panel.cover .ct{margin-top:4mm;font-size:9pt;line-height:1.5}
 .panel h3{margin:0 0 3mm;font-size:9.5pt;text-align:center;text-transform:uppercase}
 .panel h3 em{font-style:normal;color:var(--acc,var(--accent))}
@@ -66,6 +75,10 @@ h2{font-size:17px;margin:18px 0 8px}
 .panel td:first-child{width:5mm}
 
 @media print{
+  @page{size:A4;margin:5mm}
+  .sheet.a4 .paper{box-shadow:none;padding:0;min-height:0;zoom:1!important}
+  .sheet.a4 .sheet-card{justify-content:start}
+  .paper-label{display:none}
   body{background:#fff}.top,.bar,.hint,#toast,#tabs{display:none!important}
   main{padding:0}.view{display:none!important}#view-preview{display:block!important}
   .sheet{background:none;padding:0;align-items:flex-start}

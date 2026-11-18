@@ -142,26 +142,80 @@ function panelTable(title, red, cols, rows, offset) {
   return `<div class="panel"><h3>${title} <em>${red}</em></h3><table><tr><th>Lp.</th>${cols.map(c => `<th>${c[1]}</th>`).join('')}</tr>` +
     rows.map((r, i) => `<tr><td>${offset + i + 1}</td>${cols.map(([k]) => `<td>${esc(r[k] || '')}</td>`).join('')}</tr>`).join('') + '</table></div>';
 }
-function cardHTML(c) {
+function cardHTML(c, withQr) {
   const off = filled(c.offered), sou = filled(c.sought);
   let h = `<div class="sheet-card" style="--acc:${esc(c.accent)}">`;
-  h += `<div class="panel cover"><div><div class="logo">BNI</div></div><div><div class="nm">${esc(c.name)}</div><div class="sub">${esc(c.group)}${c.city ? '<br>' + esc(c.city) : ''}${c.company ? '<br>' + esc(c.company) : ''}</div>
-    <div class="ct">${[c.phone, c.phone2, c.email].filter(Boolean).map(esc).join('<br>')}</div></div></div>`;
+  h += `<div class="panel cover"><div><div class="logo">BNI</div></div><div class="row"><div><div class="nm">${esc(c.name)}</div><div class="sub">${esc(c.group)}${c.city ? '<br>' + esc(c.city) : ''}${c.company ? '<br>' + esc(c.company) : ''}</div>
+    <div class="ct">${[c.phone, c.phone2, c.email].filter(Boolean).map(esc).join('<br>')}</div></div>${withQr ? '<div class="qr" data-qr>…</div>' : ''}</div></div>`;
   h += `<div class="panel"><ol>${c.qa.map((x, i) => `<li><b>${i + 1}. ${esc(x.q)}</b><span>${esc(x.a)}</span></li>`).join('')}</ol></div>`;
   chunk(off, 10).forEach((r, i) => h += panelTable('Lista TOP 20', 'kontaktów biznesowych', OFFERED_COLS, r, i * 10));
   chunk(sou, 10).forEach((r, i) => h += panelTable('Lista TOP 20', 'poszukiwanych kontaktów', SOUGHT_COLS, r, i * 10));
   return h + '</div>';
 }
+/* ---- link online + QR ---- */
+async function pack(str) {
+  const raw = new TextEncoder().encode(str);
+  if (typeof CompressionStream === 'undefined') return 'r.' + bytesB64(raw);
+  const cs = new Blob([raw]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+  return 'z.' + bytesB64(new Uint8Array(await new Response(cs).arrayBuffer()));
+}
+async function unpack(tok) {
+  const raw = b64Bytes(tok.slice(2));
+  if (tok.startsWith('r.')) return new TextDecoder().decode(raw);
+  const ds = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new TextDecoder().decode(await new Response(ds).arrayBuffer());
+}
+const bytesB64 = u => btoa(String.fromCharCode(...u)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const b64Bytes = t => Uint8Array.from(atob(t.replace(/-/g, '+').replace(/_/g, '/')), ch => ch.charCodeAt(0));
+function baseUrl() {
+  let b = ($('#qr-base').value || '').trim() || localStorage.getItem('bni-qr-base') || (location.protocol.startsWith('http') ? location.origin + location.pathname : '');
+  return b.split('#')[0];
+}
+async function onlineUrl(c) {
+  const slim = { id: c.id, name: c.name, group: c.group, city: c.city, company: c.company, phone: c.phone, phone2: c.phone2, email: c.email, accent: c.accent,
+    qa: c.qa, offered: filled(c.offered), sought: filled(c.sought) };
+  return baseUrl() + '#card=' + await pack(JSON.stringify(slim));
+}
+function qrSvg(text) {
+  const q = qrcode(0, 'L'); q.addData(text); q.make();
+  return q.createSvgTag({ cellSize: 2, margin: 0, scalable: true });
+}
+async function fillQr(c) {
+  const box = $('#sheet [data-qr]'), info = $('#qr-info');
+  if (!box) { info.textContent = ''; return; }
+  try {
+    const url = await onlineUrl(c);
+    box.innerHTML = qrSvg(url) + '<div>Wizytówka online</div>';
+    info.textContent = baseUrl() ? `Kod QR otwiera: ${baseUrl()} (dane wizytówki zapisane w linku, ${url.length} znaków).` : 'Podaj adres strony powyżej (np. po wdrożeniu), żeby kod QR działał poza tym urządzeniem.';
+  } catch (e) {
+    box.innerHTML = '<div>QR: za dużo danych</div>';
+    info.textContent = 'Za dużo treści na kod QR — skróć wpisy lub użyj wersji z bazą danych (krótki link).';
+  }
+}
+function fitSheet() {
+  const p = $('#sheet .paper'); if (!p) return;
+  p.style.zoom = ''; const w = p.offsetWidth, avail = $('#sheet').clientWidth - 28;
+  if (avail < w) p.style.zoom = Math.max(avail / w, 0.3);
+}
 function renderPreview() {
   fillSelect($('#preview-card'));
   const c = getCard($('#preview-card').value) || cur();
-  $('#sheet').innerHTML = c ? cardHTML(c) : '<p class="hint" style="color:#fff">Brak wizytówek.</p>';
+  const sheet = $('#sheet'), layout = $('#preview-layout').value, qr = $('#opt-qr').checked;
+  sheet.className = 'sheet ' + layout;
+  if (!$('#qr-base').value) $('#qr-base').value = localStorage.getItem('bni-qr-base') || '';
+  if (!c) { sheet.innerHTML = '<p class="hint" style="color:#fff">Brak wizytówek.</p>'; return; }
+  const inner = cardHTML(c, qr);
+  sheet.innerHTML = layout === 'a4' ? `<div class="paper-label">Strona A4 — linie przerywane to linie cięcia/składania</div><div class="paper">${inner}</div>` : inner;
+  fillQr(c); fitSheet();
 }
+['preview-layout', 'opt-qr'].forEach(id => $('#' + id).addEventListener('change', renderPreview));
+$('#qr-base').addEventListener('change', e => { try { localStorage.setItem('bni-qr-base', e.target.value.trim()); } catch (_) {} renderPreview(); });
+window.addEventListener('resize', fitSheet);
 $('#preview-card').onchange = e => { currentId = e.target.value; renderPreview(); };
 $('#btn-print').onclick = () => window.print();
 $('#btn-share').onclick = async () => {
   const c = cur(); if (!c) return;
-  const url = location.href.split('#')[0] + '#card=' + b64(JSON.stringify(c));
+  const url = await onlineUrl(c);
   try { await navigator.clipboard.writeText(url); toast('Link skopiowany'); } catch (e) { prompt('Skopiuj link:', url); }
 };
 const b64 = s => btoa(String.fromCharCode(...new TextEncoder().encode(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -230,16 +284,18 @@ $('#file-import').onchange = async e => {
 };
 
 /* ---------- link udostępniony (#card=...) ---------- */
-function importFromHash() {
+async function importFromHash() {
   const m = location.hash.match(/^#card=(.+)$/); if (!m) return;
   try {
-    const c = Object.assign(newCard(), JSON.parse(unb64(m[1])));
-    if (confirm(`Dodać wizytówkę „${c.name}” do swojej listy?`)) { if (getCard(c.id)) c.id = uid(); state.cards.push(c); currentId = c.id; save(); }
+    const tok = m[1];
+    const json = /^[zr]\./.test(tok) ? await unpack(tok) : unb64(tok);
+    const c = Object.assign(newCard(), JSON.parse(json));
+    if (confirm(`Dodać wizytówkę „${c.name}” do swojej listy?`)) { if (getCard(c.id)) c.id = uid(); state.cards.push(c); currentId = c.id; save(); renderList(); }
   } catch (e) { toast('Niepoprawny link'); }
   history.replaceState(null, '', location.pathname + location.search);
 }
 
-importFromHash();
 renderList();
+importFromHash();
 if (typeof module !== 'undefined') module.exports = { suggestions };
 })();
