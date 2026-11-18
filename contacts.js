@@ -53,7 +53,7 @@ function render() {
   renderTags();
   const all = list(), r = filtered(), box = $('#ct-list');
   $('#ct-count').textContent = all.length ? `${all.length} kontaktów${r.length !== all.length ? ` · pokazano ${r.length}` : ''}` : 'Brak kontaktów';
-  if (!all.length) { box.innerHTML = `<div class="empty"><div class="empty-ico">👥</div><h3>Magazyn jest pusty</h3><p>Dodaj kontakt ręcznie, zeskanuj wizytówkę albo zaimportuj plik vCard / CSV.</p><div class="actions"><button class="primary" data-act="new">+ Nowy kontakt</button><button data-act="scan">Zeskanuj wizytówkę</button><button data-act="demo">Wczytaj przykładowe</button></div></div>`; return; }
+  if (!all.length) { box.innerHTML = `<div class="empty"><h3>Magazyn jest pusty</h3><p>Dodaj kontakt ręcznie, zeskanuj wizytówkę albo zaimportuj plik vCard / CSV.</p><div class="actions"><button class="primary" data-act="new">+ Nowy kontakt</button><button data-act="scan">Zeskanuj wizytówkę</button><button data-act="demo">Wczytaj przykładowe</button></div></div>`; return; }
   box.innerHTML = r.length ? r.map(contactRow).join('') : '<div class="empty"><h3>Brak wyników</h3><p>Zmień filtry lub wyszukiwanie.</p></div>';
 }
 $('#ct-list').addEventListener('click', e => {
@@ -155,7 +155,7 @@ const CITIES = ['Katowice', 'Kraków', 'Gliwice', 'Wrocław', 'Łódź', 'Pozna�
 function loadDemo() {
   const items = Array.from({ length: 36 }, (_, i) => {
     const f = FIRMS[i % FIRMS.length], fn = FN[i % FN.length], ln = LN[(i * 7 + 3 + Math.floor(i / 20) * 5) % LN.length];
-    return normalize({ firstName: fn, lastName: ln, company: f[0] + ' Sp. z o.o.', title: TITLES[i % TITLES.length], industry: f[1], emails: `${fn.toLowerCase().replace(/[^a-z]/g, 'x')}.${i}@example.com`, phones: `+48 600 000 ${String(100 + i).padStart(3, '0')}`, city: CITIES[i % CITIES.length], tags: [f[1].split(' ')[0], i % 3 === 0 ? 'VIP' : 'BNI'], relation: REL[i % 2], scale: SCALE[i % 3], notes: 'Fikcyjny kontakt demonstracyjny.' }, 'manual');
+    return normalize({ firstName: fn, lastName: ln, company: f[0] + ' Sp. z o.o.', title: TITLES[i % TITLES.length], industry: f[1], emails: `${fn.toLowerCase().replace(/[^a-z]/g, 'x')}.${i}@example.com`, phones: `+48 600 000 ${String(100 + i).padStart(3, '0')}`, city: CITIES[i % CITIES.length], tags: [f[1].split(' ')[0], i % 3 === 0 ? 'VIP' : 'Polecany'], relation: REL[i % 2], scale: SCALE[i % 3], notes: 'Fikcyjny kontakt demonstracyjny.' }, 'manual');
   });
   addContacts(items, 'Wczytano przykładowe');
 }
@@ -279,7 +279,7 @@ const pal = $('#palette'), palIn = $('#pal-input'), palList = $('#pal-list');
 let palItems = [], palSel = 0;
 function palBuild() {
   const q = palIn.value.trim().toLowerCase();
-  const cmds = [['Wizytówki', () => B.show('cards')], ['Kontakty', () => B.show('contacts')], ['Skanuj wizytówkę', () => B.show('scan')], ['Edytor', () => B.show('editor')], ['Podgląd i druk', () => B.show('preview')], ['Sieć połączeń', () => B.show('links')], ['Nowy kontakt', () => { B.show('contacts'); openForm(); }], ['Zmień motyw', toggleTheme]].filter(([t]) => t.toLowerCase().includes(q)).map(([t, f]) => ({ t, k: 'Polecenie', f }));
+  const cmds = [['Wizytówki', () => B.show('cards')], ['Kontakty', () => B.show('contacts')], ['Skanuj wizytówkę', () => B.show('scan')], ['Edytor', () => B.show('editor')], ['Podgląd i druk', () => B.show('preview')], ['Sieć połączeń', () => B.show('links')], ['Nowy kontakt', () => { B.show('contacts'); openForm(); }], ['Ustawienia logo', () => { B.show('cards'); const b = $('#btn-logo'); if (b) b.click(); }], ['Zmień motyw', toggleTheme]].filter(([t]) => t.toLowerCase().includes(q)).map(([t, f]) => ({ t, k: 'Polecenie', f }));
   const cards = B.state.cards.filter(c => (c.name || '').toLowerCase().includes(q)).slice(0, 5).map(c => ({ t: c.name || 'Bez nazwy', k: 'Wizytówka', id: c.id, f: () => B.show('editor') }));
   const cts = q ? list().filter(c => matches(c, q)).slice(0, 8).map(c => ({ t: fullName(c), k: 'Kontakt', f: () => { B.show('contacts'); openForm(c); } })) : [];
   palItems = cmds.concat(cards, cts); palSel = 0; palDraw();

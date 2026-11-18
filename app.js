@@ -31,8 +31,8 @@ const okId = v => SAFE_ID.test(String(v));
 const okLink = l => l && okId(l.id) && okId(l.from) && okId(l.to);
 const normCard = c => { const d = newCard(); const o = Object.assign({}, d, c); if (!okId(o.id)) o.id = uid(); if (!/^#[0-9a-f]{3,8}$/i.test(String(o.accent))) o.accent = '#e8473f'; o.qa = Array.isArray(c.qa) && c.qa.length ? c.qa : d.qa; o.offered = Array.isArray(c.offered) && c.offered.length ? c.offered : [{}]; o.sought = Array.isArray(c.sought) && c.sought.length ? c.sought : [{}]; return o; };
 function load() {
-  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.cards)) return { cards: s.cards.map(normCard), links: s.links || [], contacts: s.contacts || [] }; } catch (e) {}
-  return { cards: [], links: [], contacts: [] };
+  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.cards)) return { cards: s.cards.map(normCard), links: s.links || [], contacts: s.contacts || [], settings: s.settings || {} }; } catch (e) {}
+  return { cards: [], links: [], contacts: [], settings: {} };
 }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} schedulePush(); }
 function toast(msg) { const sn = document.getElementById('snack'); if (sn) sn.classList.remove('show'); const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2200); }
@@ -52,15 +52,17 @@ async function pull() {
   if (!cloud) return false;
   try {
     if (dirty) await push();
-    let [cs, ls, ks] = await Promise.all([rest('bni_cards?select=id,data'), rest('bni_links?select=id,from_id,to_id,note'), rest('bni_contacts?select=id,data')]);
+    let [cs, ls, ks, ss] = await Promise.all([rest('bni_cards?select=id,data'), rest('bni_links?select=id,from_id,to_id,note'), rest('bni_contacts?select=id,data'), rest('bni_settings?select=id,data').catch(() => [])]);
     cs = cs.filter(r => okId(r.id)); ks = ks.filter(r => okId(r.id)); ls = ls.filter(l => okId(l.id) && okId(l.from_id) && okId(l.to_id));
-    const remote = { cards: cs.map(r => normCard(r.data || {})), links: ls.map(l => ({ id: l.id, from: l.from_id, to: l.to_id, note: l.note })), contacts: ks.map(r => Object.assign({}, r.data, { id: r.id })) };
+    const remoteSettings = {}; (ss || []).forEach(r => { if (r.id === 'logo') remoteSettings.logo = sanitizeLogo(r.data); });
+    const remote = { settings: remoteSettings, cards: cs.map(r => normCard(r.data || {})), links: ls.map(l => ({ id: l.id, from: l.from_id, to: l.to_id, note: l.note })), contacts: ks.map(r => Object.assign({}, r.data, { id: r.id })) };
     remoteCards = new Set(cs.map(r => r.id)); remoteLinks = new Set(ls.map(l => l.id)); remoteContacts = new Set(ks.map(r => r.id));
     if (!localStorage.getItem('bni-synced')) { // pierwsze uruchomienie: dołącz lokalne wizytówki
       state.cards.forEach(c => { if (!remoteCards.has(c.id)) remote.cards.push(c); });
       state.links.forEach(l => { if (!remoteLinks.has(l.id)) remote.links.push(l); });
       (state.contacts || []).forEach(c => { if (!remoteContacts.has(c.id)) remote.contacts.push(c); });
       try { localStorage.setItem('bni-synced', '1'); } catch (_) {}
+      if (!remote.settings.logo && state.settings && state.settings.logo) remote.settings.logo = state.settings.logo;
       state = remote; dirty = true; await push();
     } else state = remote;
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (_) {}
@@ -82,6 +84,7 @@ function push() {
       if (delK.length) await rest('bni_contacts?id=in.(' + delK.map(encodeURIComponent).join(',') + ')', { method: 'DELETE' });
       if (kids.size) await rest('bni_contacts?on_conflict=id', Object.assign({ body: JSON.stringify(snap.contacts.map(c => ({ id: c.id, data: c, updated_at: new Date().toISOString() }))) }, up));
       remoteContacts = kids;
+      if (snap.settings && snap.settings.logo) await rest('bni_settings?on_conflict=id', Object.assign({ body: JSON.stringify([{ id: 'logo', data: snap.settings.logo, updated_at: new Date().toISOString() }]) }, up));
       const delL = [...remoteLinks].filter(i => !lids.has(i)), delC = [...remoteCards].filter(i => !ids.has(i));
       if (delL.length) await rest('bni_links?id=in.(' + delL.map(encodeURIComponent).join(',') + ')', { method: 'DELETE' });
       if (delC.length) await rest('bni_cards?id=in.(' + delC.map(encodeURIComponent).join(',') + ')', { method: 'DELETE' });
@@ -103,6 +106,26 @@ function newCard(over = {}) {
   }, over);
 }
 window.BNI_SAFE = { okId, normCard };
+/* ---------- logo (konfigurowalne; domyślnie BNI jak we wzorze wizytówki) ---------- */
+const DEFAULT_LOGO = { mode: 'text', text: 'BNI', color: '', italic: true, reg: true, image: '', referra: true };
+const IMG_RE = /^data:image\/(png|jpeg|webp|svg\+xml);base64,[A-Za-z0-9+\/=]+$/;
+function sanitizeLogo(l) {
+  l = Object.assign({}, DEFAULT_LOGO, l && typeof l === 'object' ? l : {});
+  return { mode: l.mode === 'image' && IMG_RE.test(String(l.image)) && String(l.image).length < 260000 ? 'image' : 'text',
+    text: String(l.text || 'BNI').replace(/[<>]/g, '').slice(0, 14) || 'BNI',
+    color: /^#[0-9a-f]{3,8}$/i.test(String(l.color)) ? l.color : '',
+    italic: l.italic !== false, reg: l.reg !== false, referra: l.referra !== false,
+    image: IMG_RE.test(String(l.image)) && String(l.image).length < 260000 ? l.image : '' };
+}
+const getLogo = () => sanitizeLogo(state.settings && state.settings.logo);
+function setLogo(l) { state.settings = state.settings || {}; state.settings.logo = sanitizeLogo(l); save(); }
+function logoHTML(l, accent, basePt) {
+  l = sanitizeLogo(l);
+  if (l.mode === 'image') return `<img class="logo-img" src="${l.image}" alt="Logo">`;
+  const col = l.color || accent || '#c4251d', len = l.text.length;
+  const size = basePt ? `font-size:${Math.max(12, Math.round(basePt - Math.max(0, len - 3) * 2.6))}pt;` : '';
+  return `<span class="logo-txt${l.italic ? ' it' : ''}" style="${size}color:${esc(col)}">${esc(l.text)}${l.reg ? '<sup>\u00ae</sup>' : ''}</span>`;
+}
 const getCard = id => state.cards.find(c => c.id === id);
 const cur = () => getCard(currentId);
 
@@ -123,7 +146,7 @@ $('#tabs').addEventListener('click', e => { const b = e.target.closest('button')
 /* ---------- lista ---------- */
 function renderList() {
   const el = $('#card-list');
-  if (!state.cards.length) { el.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-ico">🪪</div><h3>Nie masz jeszcze wizytówek</h3><p>Utwórz pierwszą albo wczytaj przykładowe dane.</p></div>'; return; }
+  if (!state.cards.length) { el.innerHTML = '<div class="empty" style="grid-column:1/-1"><h3>Nie masz jeszcze wizytówek</h3><p>Utwórz pierwszą albo wczytaj przykładowe dane.</p></div>'; return; }
   el.innerHTML = state.cards.map(c => {
     const n = state.links.filter(l => l.from === c.id || l.to === c.id).length;
     return `<div class="tile" data-id="${esc(c.id)}" tabindex="0" role="button">
@@ -210,8 +233,8 @@ function cardHTML(c, withQr) {
   const qa = `<div class="panel"><ol class="qa">${c.qa.map((x, i) => `<li><span class="n">${i + 1}.</span><div><b>${esc(x.q)}</b><i>${esc(x.a)}</i></div></li>`).join('')}</ol></div>`;
   const tel = [c.phone, c.phone2].filter(Boolean).map(esc).join('<br>');
   const cover = `<div class="panel cover"><div class="cv-top"><div><div class="nm">${esc(c.name).replace(' ', '<br>')}</div><div class="cv-sub">${esc(c.group)}${c.city ? '<br>' + esc(c.city) : ''}${c.company ? '<br>' + esc(c.company) : ''}</div></div>
-    <div class="rt"><div class="logo">BNI<sup>®</sup></div>${withQr ? '<div class="qr" data-qr>…</div>' : ''}</div></div>
-    <div class="cv-bot"><div class="ct">${tel ? ICON_TEL + '<span>' + tel + '</span>' : ''}</div><div class="ct">${c.email ? ICON_MAIL + '<span>' + esc(c.email) + '</span>' : ''}</div></div></div>`;
+    <div class="rt"><div class="logo">${logoHTML(getLogo(), c.accent, 26)}</div>${withQr ? '<div class="qr" data-qr>…</div>' : ''}</div></div>
+    <div class="cv-bot"><div class="ct">${tel ? ICON_TEL + '<span>' + tel + '</span>' : ''}</div><div class="ct">${c.email ? ICON_MAIL + '<span>' + esc(c.email) + '</span>' : ''}</div></div>${getLogo().referra ? '<div class="cv-ref">Referra</div>' : ''}</div>`;
   return `<div class="sheet-card" style="--acc:${esc(c.accent || '#e8473f')}">
     <div class="side"><div class="side-label">Strona A (awers)</div>${tablePanel(OFFERED_COLS, OW, o, 0)}${tablePanel(OFFERED_COLS, OW, o, 10)}${tablePanel(SOUGHT_COLS, SW, s, 0, true)}</div>
     <div class="side"><div class="side-label">Strona B (rewers)</div>${tablePanel(SOUGHT_COLS, SW, s, 10, true)}${qa}${cover}</div></div>`;
@@ -233,7 +256,7 @@ async function unpack(tok) {
 }
 const bytesB64 = u => btoa(String.fromCharCode(...u)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const b64Bytes = t => Uint8Array.from(atob(t.replace(/-/g, '+').replace(/_/g, '/')), ch => ch.charCodeAt(0));
-function baseUrl() { return location.href.split('#')[0]; }
+function baseUrl() { return (CFG.publicUrl || location.href).split('#')[0]; }
 async function onlineUrl(c) {
   if (cloud) { if (!remoteCards.has(c.id)) dirty = true; await push(); if (remoteCards.has(c.id)) return baseUrl() + '#c=' + encodeURIComponent(c.id); }
   const slim = { id: c.id, name: c.name, group: c.group, city: c.city, company: c.company, phone: c.phone, phone2: c.phone2, email: c.email, accent: c.accent,
@@ -381,8 +404,8 @@ async function importFromHash() {
 }
 
 renderList();
-window.BNI = { get state() { return state; }, setCurrent: id => { currentId = id; }, save, toast, uid, esc, $, $$, cur, getCard, show, renderTable, renderEditor, OFFERED_COLS, SOUGHT_COLS, MAX_ROWS, cloud: () => cloud };
-if (/^#(c|card)=/.test(location.hash) && window.BNIViewer) window.BNIViewer.run({ rest, unpack, normCard, okId });
+window.BNI = { getLogo, setLogo, sanitizeLogo, logoHTML, renderPreview: () => renderPreview(), get state() { return state; }, setCurrent: id => { currentId = id; }, save, toast, uid, esc, $, $$, cur, getCard, show, renderTable, renderEditor, OFFERED_COLS, SOUGHT_COLS, MAX_ROWS, cloud: () => cloud };
+if (/^#(c|card)=/.test(location.hash) && window.BNIViewer) window.BNIViewer.run({ rest, unpack, normCard, okId, sanitizeLogo, logoHTML });
 else pull().then(() => { renderList(); if (window.BNIContacts) window.BNIContacts.onData(); return importFromHash(); });
 if (typeof module !== 'undefined') module.exports = { suggestions };
 })();

@@ -3,12 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>BNI Connector – rozszerzone wizytówki</title>
-<meta name="theme-color" content="#16161a">
+<title>Referra – wizytówki i polecenia</title>
+<meta name="theme-color" content="#f2eee3">
 <meta name="robots" content="noindex">
 <meta name="color-scheme" content="light dark">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/ibm-plex-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/ibm-plex-serif-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="fonts.css">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="scan.css">
 <link rel="stylesheet" href="ui.css">
@@ -17,7 +20,7 @@
 <body>
 <div class="app">
 <aside class="rail">
-  <div class="brand"><span class="logo-mark">BNI</span><span class="brand-name">Connector</span></div>
+  <div class="brand"><div class="brand-row"><svg class="logo-mark" viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="36" height="36"/><text x="20" y="29" text-anchor="middle">R</text></svg><span class="brand-word">Referra</span></div><span class="brand-name">Wizytówki · polecenia</span></div>
   <nav id="tabs" aria-label="Główna nawigacja">
     <button data-view="cards" class="active"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h6M7 14h4"/></svg><span>Wizytówki</span></button>
     <button data-view="contacts"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14a5 5 0 0 1 4.5 5"/></svg><span>Kontakty</span></button>
@@ -41,6 +44,7 @@
         <button class="primary" id="btn-new">+ Nowa wizytówka</button>
         <button id="btn-demo">Wczytaj przykład</button>
         <button id="btn-export">Eksport JSON</button>
+        <button id="btn-logo" title="Logo na wizytówkach (domyślnie BNI)">Logo</button>
         <button id="btn-wipe" title="Czyści tylko dane zapisane w tej przeglądarce">Wyczyść dane lokalne</button>
         <label class="btn">Import JSON<input type="file" id="file-import" accept=".json,application/json" hidden></label>
       </div>
@@ -86,7 +90,7 @@
         <legend>Dane (awers wizytówki)</legend>
         <div class="form">
           <label>Imię i nazwisko <input data-f="name"></label>
-          <label>Grupa BNI <input data-f="group"></label>
+          <label>Grupa / organizacja <input data-f="group"></label>
           <label>Miasto <input data-f="city"></label>
           <label>Firma / branża <input data-f="company"></label>
           <label>Telefon <input data-f="phone" type="tel"></label>
@@ -193,5 +197,6 @@
 <script src="scan.js"></script>
 <script src="app.js"></script>
 <script src="contacts.js"></script>
+<script src="logo.js"></script>
 </body>
 </html>

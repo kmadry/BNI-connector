@@ -1,6 +1,6 @@
-# BNI Connector
+# Referra
 
-Statyczna aplikacja (bez budowania) do tworzenia rozszerzonych, składanych wizytówek BNI
+Statyczna aplikacja (bez budowania) do tworzenia rozszerzonych, składanych wizytówek (format BNI)
 (awers z danymi, 8 pytań 1:1, listy TOP 20 kontaktów oferowanych i poszukiwanych)
 oraz do łączenia wizytówek między sobą (podpowiedzi dopasowań + mapa połączeń).
 

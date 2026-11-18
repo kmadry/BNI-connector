@@ -52,6 +52,8 @@ process.on('exit', () => {});
   ok('cofnij przywraca wiersz', (await p.inputValue('#tbl-offered tr[data-i="2"] input[data-k="name"]')) === before);
 
   // zmiana kolejności
+  await p.evaluate(() => { const t = document.querySelector('#tbl-offered'); const y = t.getBoundingClientRect().top + window.scrollY; window.scrollTo(0, y - 120); });
+  await p.waitForTimeout(200);
   const a0 = await p.inputValue('#tbl-offered tr[data-i="0"] input[data-k="name"]');
   const g = await p.locator('#tbl-offered tr[data-i="0"] .grip').boundingBox(), t = await p.locator('#tbl-offered tr[data-i="3"]').boundingBox();
   await p.mouse.move(g.x + 8, g.y + g.height / 2); await p.mouse.down(); await p.mouse.move(g.x + 20, g.y + 30, { steps: 3 }); await p.mouse.move(t.x + 80, t.y + t.height / 2, { steps: 10 }); await p.mouse.up(); await p.waitForTimeout(300);
@@ -118,7 +120,8 @@ process.on('exit', () => {});
   ok('widok QR: 8 pytań 1:1', (await v.locator('.v-sec details').count()) === 8);
   ok('widok QR: przyciski Zadzwoń / Napisz / Zapisz kontakt', (await v.locator('a[href^="tel:"]').count()) >= 1 && (await v.locator('a[href^="mailto:"]').count()) === 1 && (await v.locator('#v-save').count()) === 1);
   ok('widok QR: brak poziomego przewijania', (await v.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 1);
-  ok('widok QR: pobiera tylko jedną kartę, bez zapisu', reqs.length === 1 && /bni_cards\?id=eq\.demo-adam/.test(reqs[0]) && writes.length === 0, reqs.length + ' zapytań, zapisów: ' + writes.length);
+  ok('widok QR: tylko odczyt jednej karty i logo, bez zapisu', reqs.length === 2 && reqs.some(u => /bni_cards\?id=eq\.demo-adam/.test(u)) && reqs.some(u => /bni_settings\?id=eq\.logo/.test(u)) && writes.length === 0, reqs.length + ' zapytań, zapisów: ' + writes.length);
+  ok('widok QR: logo (domyślnie BNI) i marka Referra', /BNI/.test(await v.textContent('.v-logo')) && /Referra/.test(await v.textContent('.v-foot')));
   await v.screenshot({ path: OUT + '/07-widok-qr.png', fullPage: true });
   const vc = await v.evaluate(() => window.BNIViewer.vcard({ name: 'Jan Test', phone: '+48 600 000 001', email: 'jan@example.com', company: 'Firma' }));
   ok('widok QR: poprawna wizytówka vCard', /BEGIN:VCARD/.test(vc) && /TEL;TYPE=CELL:\+48600000001/.test(vc) && /EMAIL:jan@example\.com/.test(vc));
@@ -127,6 +130,27 @@ process.on('exit', () => {});
   await v.goto(base + '#c=nie-ma-takiej'); await v.waitForFunction(() => /Nie znaleziono/.test(document.querySelector('#viewer').textContent), null, { timeout: 8000 }).catch(() => {});
   ok('widok QR: nieistniejąca karta → komunikat', /Nie znaleziono/.test(await v.textContent('#viewer')));
   ok('widok QR: brak błędów JS/CSP', verrs.length === 0, verrs.join(' | '));
+  // logo konfigurowalne: domyślnie BNI jak we wzorze, znak Referra, edycja tekstem i obrazem
+  await p.click('#tabs [data-view=preview]'); await p.waitForSelector('.qr svg');
+  ok('logo: domyślnie BNI na okładce (jak we wzorze)', /BNI/.test(await p.textContent('.cover .logo')));
+  ok('logo: mały znak Referra na okładce', /Referra/i.test(await p.textContent('.cover .cv-ref')));
+  ok('marka: Referra w menu i tytule', /Referra/.test(await p.textContent('.brand-word')) && /Referra/.test(await p.title()));
+  await p.click('#tabs [data-view=cards]'); await p.click('#btn-logo'); await p.waitForSelector('#logo-dialog[open]');
+  await p.fill('#lg-text', 'ACME'); await p.click('#lg-form button[value=save]'); await p.waitForTimeout(400);
+  await p.click('#tabs [data-view=preview]'); await p.waitForSelector('.cover .logo');
+  ok('logo: zmiana tekstu widoczna na okładce', /ACME/.test(await p.textContent('.cover .logo')));
+  await p.click('#tabs [data-view=cards]'); await p.click('#btn-logo'); await p.waitForSelector('#logo-dialog[open]');
+  await p.click('#lg-form .lg-seg button[data-mode=image]');
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+  await p.setInputFiles('#lg-file', { name: 'logo.png', mimeType: 'image/png', buffer: png }); await p.waitForTimeout(300);
+  await p.click('#lg-form button[value=save]'); await p.click('#tabs [data-view=preview]'); await p.waitForSelector('.cover .logo');
+  ok('logo: wgrany obraz na okładce', (await p.locator('.cover .logo-img').count()) === 1 && /^data:image\/png/.test(await p.getAttribute('.cover .logo-img', 'src')));
+  await p.click('#tabs [data-view=cards]'); await p.click('#btn-logo'); await p.waitForSelector('#logo-dialog[open]');
+  await p.setInputFiles('#lg-file', { name: 'zly.svg', mimeType: 'image/svg+xml', buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>window.__svg=1</script></svg>') }); await p.waitForTimeout(300);
+  ok('logo: SVG ze skryptem odrzucony', (await p.evaluate(() => window.BNI.getLogo().image)).includes('data:image/png') && (await p.evaluate(() => window.__svg)) === undefined);
+  await p.click('#lg-reset'); await p.click('#lg-form button[value=save]'); await p.click('#tabs [data-view=preview]'); await p.waitForSelector('.cover .logo');
+  ok('logo: przywrócenie BNI', /BNI/.test(await p.textContent('.cover .logo')) && (await p.locator('.cover .logo-img').count()) === 0);
+  await p.waitForTimeout(1500);
   // XSS przez id (zatruta karta importowana jako JSON)
   await p.setInputFiles('#file-import', { name: 'x.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ cards: [{ id: '"><img src=x onerror=window.__xss=1>', name: 'X', accent: 'red;background:url(//e)', qa: [], offered: [], sought: [] }], links: [{ id: 'a"b', from: 'x', to: 'y' }] })) });
   await p.click('#tabs [data-view=cards]'); await p.waitForTimeout(500);

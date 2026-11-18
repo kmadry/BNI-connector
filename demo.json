@@ -3,7 +3,7 @@
   {
    "id": "demo-adam",
    "name": "Adam Przykładowy",
-   "group": "grupa BNI Przykład",
+   "group": "grupa Przykład",
    "city": "Katowice",
    "company": "",
    "phone": "+48 600 000 000",
@@ -33,7 +33,7 @@
     },
     {
      "q": "Skąd się wzięła Twoja najlepsza rekomendacja?",
-     "a": "Wspólne hobby i rekomendacja z BNI od członka, którego znam od lat."
+     "a": "Wspólne hobby i rekomendacja od członka grupy, którego znam od lat."
     },
     {
      "q": "Czego słuchać?",
@@ -312,7 +312,7 @@
   {
    "id": "demo-jan",
    "name": "Jan Kowalski",
-   "group": "grupa BNI Przykład",
+   "group": "grupa Przykład",
    "city": "Katowice",
    "company": "Doradztwo inwestycyjne",
    "phone": "+48 600 000 001",
@@ -342,7 +342,7 @@
     },
     {
      "q": "Skąd się wzięła Twoja najlepsza rekomendacja?",
-     "a": "Wspólne hobby i rekomendacja z BNI"
+     "a": "Wspólne hobby i rekomendacja z grupy"
     },
     {
      "q": "Czego słuchać?",
@@ -621,7 +621,7 @@
   {
    "id": "demo-ewa",
    "name": "Ewa Zielińska",
-   "group": "grupa BNI Przykład",
+   "group": "grupa Przykład",
    "city": "Kraków",
    "company": "Biuro rachunkowe",
    "phone": "+48 600 000 002",
@@ -651,7 +651,7 @@
     },
     {
      "q": "Skąd się wzięła Twoja najlepsza rekomendacja?",
-     "a": "Z BNI, od dewelopera, któremu zrobiłam audyt"
+     "a": "Z grupy, od dewelopera, któremu zrobiłam audyt"
     },
     {
      "q": "Czego słuchać?",
