@@ -85,6 +85,7 @@ h2{font-size:17px;margin:18px 0 8px}
 .cover .bot{display:flex;justify-content:space-between;align-items:flex-end}
 .cover .ct{display:flex;gap:1.6mm;align-items:center;font-size:7pt;font-weight:600;line-height:1.25}
 .cover .ct svg{width:3.8mm;height:3.8mm;flex:none}
+.cover .ct span{white-space:nowrap}
 
 @media print{
   @page{size:A4;margin:0}

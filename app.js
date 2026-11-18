@@ -54,7 +54,7 @@ async function pull() {
       state = remote; dirty = true; await push();
     } else state = remote;
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (_) {}
-    if (!getCard(currentId)) currentId = state.cards[0]?.id || null;
+    if (!getCard(currentId)) currentId = (getCard('demo-adam') || state.cards[0])?.id || null;
     setSync('☁ synchronizacja OK', 'ok'); return true;
   } catch (e) { setSync('☁ offline (dane lokalne)', 'err'); return false; }
 }
@@ -242,11 +242,12 @@ function fitSheet() {
 function renderPreview() {
   fillSelect($('#preview-card'));
   const c = getCard($('#preview-card').value) || cur();
+  if (!renderPreview.init) { renderPreview.init = true; if (window.innerWidth < 700) $('#preview-layout').value = 'strip'; }
   const sheet = $('#sheet'), layout = $('#preview-layout').value, qr = $('#opt-qr').checked;
   sheet.className = 'sheet ' + layout;
   if (!c) { sheet.innerHTML = '<p class="hint" style="color:#fff">Brak wizytówek.</p>'; return; }
   const inner = cardHTML(c, qr);
-  sheet.innerHTML = layout === 'a4' ? `<div class="paper-label">Strona A4 — linie przerywane to linie cięcia/składania</div><div class="paper">${inner}</div>` : inner;
+  sheet.innerHTML = layout === 'a4' ? `<div class="paper-label">Strona A4 — linie przerywane to linie cięcia/składania</div><div class="paper">${inner}</div>` : `<div class="paper">${inner}</div>`;
   fillQr(c); fitSheet();
 }
 ['preview-layout', 'opt-qr'].forEach(id => $('#' + id).addEventListener('change', renderPreview));

@@ -367,6 +367,132 @@
      "industry": "Spożywcza producent",
      "relation": "Znajomy / Klient",
      "scale": "Średnia firma"
+    },
+    {
+     "name": "Filip Jastrzębski",
+     "company": "Zeta Auto",
+     "industry": "Motoryzacyjna - serwis",
+     "relation": "Znajomy / Partner biznesowy",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Gabriela Kruk",
+     "company": "Eta Energia",
+     "industry": "OZE - fotowoltaika",
+     "relation": "Znajomy / Klient",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Hubert Zając",
+     "company": "Theta Tekstylia",
+     "industry": "Tekstylia",
+     "relation": "Znajomy / Klient",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Iwona Bąk",
+     "company": "Iota Design",
+     "industry": "Projektowanie wnętrz",
+     "relation": "Znajomy / Partner biznesowy",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Józef Sikora",
+     "company": "Kappa Consulting",
+     "industry": "Doradztwo biznesowe",
+     "relation": "Znajomy / Klient",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Karolina Mazur",
+     "company": "Lambda Meble",
+     "industry": "Meble na wymiar",
+     "relation": "Znajomy / Klient",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Lech Pawlak",
+     "company": "Mu Okna",
+     "industry": "Stolarka okienna",
+     "relation": "Znajomy / Partner biznesowy",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Marta Górecki",
+     "company": "Nu Pakowanie",
+     "industry": "Opakowania",
+     "relation": "Znajomy / Klient",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Norbert Duda",
+     "company": "Xi Catering",
+     "industry": "Catering",
+     "relation": "Znajomy / Klient",
+     "scale": "Średnia firma"
+    },
+    {
+     "name": "Olga Kaczmarek",
+     "company": "Omikron Druk",
+     "industry": "Poligrafia",
+     "relation": "Znajomy / Partner biznesowy",
+     "scale": "Średnia firma"
+    },
+    {
+     "name": "Paweł Wilk",
+     "company": "Pi Rowery",
+     "industry": "Sport i rekreacja",
+     "relation": "Znajomy / Klient",
+     "scale": "Średnia firma"
+    },
+    {
+     "name": "Renata Rybak",
+     "company": "Rho Ogrody",
+     "industry": "Ogrody i zieleń",
+     "relation": "Znajomy / Klient",
+     "scale": "Średnia firma"
+    },
+    {
+     "name": "Stefan Gołąb",
+     "company": "Sigma Szkolenia",
+     "industry": "Szkolenia",
+     "relation": "Znajomy / Partner biznesowy",
+     "scale": "Średnia firma"
+    },
+    {
+     "name": "Teresa Szulc",
+     "company": "Tau Beauty",
+     "industry": "Beauty",
+     "relation": "Znajomy / Klient",
+     "scale": "Średnia firma"
+    },
+    {
+     "name": "Urszula Orzeł",
+     "company": "Fi Transport",
+     "industry": "Transport międzynarodowy",
+     "relation": "Znajomy / Klient",
+     "scale": "Średnia firma"
+    },
+    {
+     "name": "Kamil Kowalczyk",
+     "company": "Alfa Budowa Sp. z o.o.",
+     "industry": "Budowlana - deweloper",
+     "relation": "Znajomy / Klient",
+     "scale": "Średnia firma"
+    },
+    {
+     "name": "Lena Nowicki",
+     "company": "Beta Foods",
+     "industry": "Spożywcza producent",
+     "relation": "Znajomy / Klient",
+     "scale": "Mała firma"
+    },
+    {
+     "name": "Cezary Wrona",
+     "company": "Gamma Logistyka",
+     "industry": "Logistyka i transport",
+     "relation": "Znajomy / Partner biznesowy",
+     "scale": "Mała firma"
     }
    ],
    "sought": [
@@ -381,6 +507,114 @@
      "company": "",
      "industry": "Biura rachunkowe",
      "why": "Źródło kontaktów do branży budowlanej"
+    },
+    {
+     "name": "Rzecznik patentowy",
+     "company": "Kancelaria Znaków Y",
+     "industry": "Wycena znaków towarowych",
+     "why": "Znak towarowy na spółkę, licencja / dzierżawa"
+    },
+    {
+     "name": "Prezes",
+     "company": "Stowarzyszenie Agentów Z",
+     "industry": "agencja nieruchomości",
+     "why": "Rozszerzenie oferty"
+    },
+    {
+     "name": "Prezes",
+     "company": "Związek Pracodawców Demo",
+     "industry": "medyczna - duże nadwyżki finansowe",
+     "why": "Emerytura, second-home, ochrona kapitału"
+    },
+    {
+     "name": "Zarządzający",
+     "company": "Fundusz Przykładowy",
+     "industry": "private equity",
+     "why": "Dywersyfikacja geograficzna, bliskość geograficzna"
+    },
+    {
+     "name": "Komandor",
+     "company": "Klub Żeglarski Demo",
+     "industry": "żeglarze",
+     "why": "Dywersyfikacja portfela, najem wakacyjny, hobby"
+    },
+    {
+     "name": "Firmy dochodowe",
+     "company": "Dużo gotówki",
+     "industry": "doradca inwestycyjny",
+     "why": "Wiedza o zamożnych klientach - rozszerzenie oferty"
+    },
+    {
+     "name": "Agencje zatrudnienia",
+     "company": "Agencja Pracy Demo",
+     "industry": "ucieczka przed ryzykiem",
+     "why": "Zakup nieruchomości = pozwolenie na pobyt"
+    },
+    {
+     "name": "Kolekcjonerzy nieruchomości",
+     "company": "Plan B",
+     "industry": "nieruchomości",
+     "why": "Osoby chcące zdywersyfikować swój portfel"
+    },
+    {
+     "name": "Biura rachunkowe",
+     "company": "Opole, Kielce, Kraków",
+     "industry": "Biura rachunkowe",
+     "why": "Wiedza o zamożnych klientach"
+    },
+    {
+     "name": "Otwierający biznes w nowym kraju",
+     "company": "Start-upy",
+     "industry": "Doradztwo",
+     "why": "Lubimy pomagać start-upom, często to kolejna firma w grupie"
+    },
+    {
+     "name": "Inwestorzy",
+     "company": "Osoby po sprzedaży firmy",
+     "industry": "Inwestycje",
+     "why": "Bezpieczna inwestycja w branże niskiego ryzyka"
+    },
+    {
+     "name": "Fundacje rodzinne",
+     "company": "Źródła takich klientów",
+     "industry": "Prawna: kancelarie",
+     "why": "Kumulacja kapitału i potrzeby inwestycyjne"
+    },
+    {
+     "name": "Firmy produkcyjne",
+     "company": "Doradcy eksportowi",
+     "industry": "Produkcja i handel zagraniczny",
+     "why": "Wejście na nowy rynek"
+    },
+    {
+     "name": "Firmy płacące duże podatki",
+     "company": "Planowanie podatkowe",
+     "industry": "Wysoko dochodowe",
+     "why": "Optymalizacja podatkowa i nieruchomości"
+    },
+    {
+     "name": "Dyrektorzy finansowi",
+     "company": "Spółki z o.o.",
+     "industry": "Finanse",
+     "why": "Zarządzanie nadwyżkami finansowymi"
+    },
+    {
+     "name": "Franczyzobiorca",
+     "company": "Sieć sklepów Przykład",
+     "industry": "Spożywcza: sklepy",
+     "why": "Multifranczyzobiorcy i kolekcjonerzy nieruchomości"
+    },
+    {
+     "name": "Właściciel piekarni",
+     "company": "Piekarnia Wzorowa",
+     "industry": "piekarnie i cukiernie",
+     "why": "Branża często inwestująca na Cyprze, podatki i nieruchomości"
+    },
+    {
+     "name": "Dyrektor IT",
+     "company": "Software House Test",
+     "industry": "IT i outsourcing",
+     "why": "Pracownicy w modelu outsourcingowym = inwestycje"
     }
    ]
   },
@@ -435,6 +669,139 @@
      "industry": "Budowlana - deweloper",
      "relation": "Klient",
      "scale": "Duża firma"
+    },
+    {
+     "name": "Lech Pawlak",
+     "company": "Mu Okna",
+     "industry": "Stolarka okienna",
+     "relation": "Znajomy / Partner biznesowy",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Marta Górecki",
+     "company": "Nu Pakowanie",
+     "industry": "Opakowania",
+     "relation": "Znajomy / Klient",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Norbert Duda",
+     "company": "Xi Catering",
+     "industry": "Catering",
+     "relation": "Znajomy / Klient",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Olga Kaczmarek",
+     "company": "Omikron Druk",
+     "industry": "Poligrafia",
+     "relation": "Znajomy / Partner biznesowy",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Paweł Wilk",
+     "company": "Pi Rowery",
+     "industry": "Sport i rekreacja",
+     "relation": "Znajomy / Klient",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Renata Rybak",
+     "company": "Rho Ogrody",
+     "industry": "Ogrody i zieleń",
+     "relation": "Znajomy / Klient",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Stefan Gołąb",
+     "company": "Sigma Szkolenia",
+     "industry": "Szkolenia",
+     "relation": "Znajomy / Partner biznesowy",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Teresa Szulc",
+     "company": "Tau Beauty",
+     "industry": "Beauty",
+     "relation": "Znajomy / Klient",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Urszula Orzeł",
+     "company": "Fi Transport",
+     "industry": "Transport międzynarodowy",
+     "relation": "Znajomy / Klient",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Kamil Kowalczyk",
+     "company": "Alfa Budowa Sp. z o.o.",
+     "industry": "Budowlana - deweloper",
+     "relation": "Znajomy / Klient",
+     "scale": "Średnia firma"
+    },
+    {
+     "name": "Lena Nowicki",
+     "company": "Beta Foods",
+     "industry": "Spożywcza producent",
+     "relation": "Znajomy / Klient",
+     "scale": "Średnia firma"
+    },
+    {
+     "name": "Cezary Wrona",
+     "company": "Gamma Logistyka",
+     "industry": "Logistyka i transport",
+     "relation": "Znajomy / Partner biznesowy",
+     "scale": "Średnia firma"
+    },
+    {
+     "name": "Dorota Lis",
+     "company": "Delta Med",
+     "industry": "Medyczna - gabinety",
+     "relation": "Znajomy / Klient",
+     "scale": "Średnia firma"
+    },
+    {
+     "name": "Emil Sowa",
+     "company": "Epsilon IT",
+     "industry": "IT - oprogramowanie",
+     "relation": "Znajomy / Klient",
+     "scale": "Średnia firma"
+    },
+    {
+     "name": "Filip Jastrzębski",
+     "company": "Zeta Auto",
+     "industry": "Motoryzacyjna - serwis",
+     "relation": "Znajomy / Partner biznesowy",
+     "scale": "Średnia firma"
+    },
+    {
+     "name": "Gabriela Kruk",
+     "company": "Eta Energia",
+     "industry": "OZE - fotowoltaika",
+     "relation": "Znajomy / Klient",
+     "scale": "Średnia firma"
+    },
+    {
+     "name": "Hubert Zając",
+     "company": "Theta Tekstylia",
+     "industry": "Tekstylia",
+     "relation": "Znajomy / Klient",
+     "scale": "Średnia firma"
+    },
+    {
+     "name": "Iwona Bąk",
+     "company": "Iota Design",
+     "industry": "Projektowanie wnętrz",
+     "relation": "Znajomy / Partner biznesowy",
+     "scale": "Mała firma"
+    },
+    {
+     "name": "Józef Sikora",
+     "company": "Kappa Consulting",
+     "industry": "Doradztwo biznesowe",
+     "relation": "Znajomy / Klient",
+     "scale": "Mała firma"
     }
    ],
    "sought": [
@@ -443,6 +810,120 @@
      "company": "",
      "industry": "Nieruchomości inwestycyjne",
      "why": "Poszerzenie portfela klientów"
+    },
+    {
+     "name": "Agencje zatrudnienia",
+     "company": "Agencja Pracy Demo",
+     "industry": "ucieczka przed ryzykiem",
+     "why": "Zakup nieruchomości = pozwolenie na pobyt"
+    },
+    {
+     "name": "Kolekcjonerzy nieruchomości",
+     "company": "Plan B",
+     "industry": "nieruchomości",
+     "why": "Osoby chcące zdywersyfikować swój portfel"
+    },
+    {
+     "name": "Biura rachunkowe",
+     "company": "Opole, Kielce, Kraków",
+     "industry": "Biura rachunkowe",
+     "why": "Wiedza o zamożnych klientach"
+    },
+    {
+     "name": "Otwierający biznes w nowym kraju",
+     "company": "Start-upy",
+     "industry": "Doradztwo",
+     "why": "Lubimy pomagać start-upom, często to kolejna firma w grupie"
+    },
+    {
+     "name": "Inwestorzy",
+     "company": "Osoby po sprzedaży firmy",
+     "industry": "Inwestycje",
+     "why": "Bezpieczna inwestycja w branże niskiego ryzyka"
+    },
+    {
+     "name": "Fundacje rodzinne",
+     "company": "Źródła takich klientów",
+     "industry": "Prawna: kancelarie",
+     "why": "Kumulacja kapitału i potrzeby inwestycyjne"
+    },
+    {
+     "name": "Firmy produkcyjne",
+     "company": "Doradcy eksportowi",
+     "industry": "Produkcja i handel zagraniczny",
+     "why": "Wejście na nowy rynek"
+    },
+    {
+     "name": "Firmy płacące duże podatki",
+     "company": "Planowanie podatkowe",
+     "industry": "Wysoko dochodowe",
+     "why": "Optymalizacja podatkowa i nieruchomości"
+    },
+    {
+     "name": "Dyrektorzy finansowi",
+     "company": "Spółki z o.o.",
+     "industry": "Finanse",
+     "why": "Zarządzanie nadwyżkami finansowymi"
+    },
+    {
+     "name": "Franczyzobiorca",
+     "company": "Sieć sklepów Przykład",
+     "industry": "Spożywcza: sklepy",
+     "why": "Multifranczyzobiorcy i kolekcjonerzy nieruchomości"
+    },
+    {
+     "name": "Właściciel piekarni",
+     "company": "Piekarnia Wzorowa",
+     "industry": "piekarnie i cukiernie",
+     "why": "Branża często inwestująca na Cyprze, podatki i nieruchomości"
+    },
+    {
+     "name": "Dyrektor IT",
+     "company": "Software House Test",
+     "industry": "IT i outsourcing",
+     "why": "Pracownicy w modelu outsourcingowym = inwestycje"
+    },
+    {
+     "name": "Właścicielka salonu",
+     "company": "Studio Beauty Demo",
+     "industry": "Beauty",
+     "why": "Inwestycje nadwyżek finansowych, branża wysokomarżowa"
+    },
+    {
+     "name": "Architekt",
+     "company": "Pracownia Architektury X",
+     "industry": "Biuro architektoniczne",
+     "why": "Źródło kontaktów do branży budowlanej"
+    },
+    {
+     "name": "Rzecznik patentowy",
+     "company": "Kancelaria Znaków Y",
+     "industry": "Wycena znaków towarowych",
+     "why": "Znak towarowy na spółkę, licencja / dzierżawa"
+    },
+    {
+     "name": "Prezes",
+     "company": "Stowarzyszenie Agentów Z",
+     "industry": "agencja nieruchomości",
+     "why": "Rozszerzenie oferty"
+    },
+    {
+     "name": "Prezes",
+     "company": "Związek Pracodawców Demo",
+     "industry": "medyczna - duże nadwyżki finansowe",
+     "why": "Emerytura, second-home, ochrona kapitału"
+    },
+    {
+     "name": "Zarządzający",
+     "company": "Fundusz Przykładowy",
+     "industry": "private equity",
+     "why": "Dywersyfikacja geograficzna, bliskość geograficzna"
+    },
+    {
+     "name": "Komandor",
+     "company": "Klub Żeglarski Demo",
+     "industry": "żeglarze",
+     "why": "Dywersyfikacja portfela, najem wakacyjny, hobby"
     }
    ]
   }
