@@ -3,16 +3,16 @@
 const KEY = 'bni-connector-v1';
 const MAX_ROWS = 20;
 const QUESTIONS = [
-  'Trzech najlepszych klientów / branże',
+  'Trzech najlepszych klientów / branże:',
   'Dlaczego klienci myślą, że jesteś dobry?',
-  'Potencjalni najlepsi klienci',
+  'Potencjalni najlepsi klienci:',
   'Co powiedzieć?',
   'Kto przekazuje Ci rekomendacje?',
   'Skąd się wzięła Twoja najlepsza rekomendacja?',
   'Czego słuchać?',
-  'Najbardziej rentowna usługa'
+  'Najbardziej rentowna usługa:'
 ];
-const OFFERED_COLS = [['name','Imię i nazwisko'],['company','Firma'],['industry','Branża'],['relation','Relacja'],['scale','Skala']];
+const OFFERED_COLS = [['name','Imię i nazwisko'],['company','Firma'],['industry','Branża'],['relation','Relacja biznesowa'],['scale','Skala Biznesu']];
 const SOUGHT_COLS  = [['name','Imię i nazwisko'],['company','Firma'],['industry','Branża'],['why','Dlaczego poszukuję?']];
 
 let state = load();
@@ -120,26 +120,13 @@ $('#card-list').addEventListener('click', e => {
 const filled = rows => rows.filter(r => Object.values(r).some(v => String(v || '').trim()));
 
 $('#btn-new').onclick = () => { const c = newCard(); state.cards.push(c); currentId = c.id; save(); show('editor'); };
-$('#btn-demo').onclick = () => {
-  const a = newCard({
-    name: 'Jan Kowalski', group: 'grupa BNI Przykład', city: 'Katowice', company: 'Doradztwo inwestycyjne',
-    phone: '+48 600 000 001', email: 'jan@example.com',
-    qa: QUESTIONS.map((q, i) => ({ q, a: ['medyczna – farmacja, handel międzynarodowy, kolekcjoner nieruchomości','Specjalizuję się w jednym rynku i pokazuję tylko oferty, które sam bym kupił.','IT, doradcy inwestycyjni, agencje nieruchomości','Czy jesteś w pełni zadowolony z obecnych inwestycji?','Agencje nieruchomości, prawnicy, biura rachunkowe','Wspólne hobby i rekomendacja z BNI','Koniec flipów, niskie ROI, geopolityka','Sprzedaż nieruchomości i inwestycje w auta'][i] })),
-    offered: [
-      { name: 'Anna Nowak', company: 'Budimex Sp. z o.o.', industry: 'Budowlana – deweloper', relation: 'Znajomy / Klient', scale: 'Duża firma' },
-      { name: 'Piotr Wiśniewski', company: 'Smak', industry: 'Spożywcza producent', relation: 'Znajomy / Klient', scale: 'Średnia firma' }
-    ],
-    sought: [
-      { name: 'Franczyzobiorca', company: 'Żabka', industry: 'Spożywcza: sklepy', why: 'Multifranczyzobiorcy i kolekcjonerzy nieruchomości' },
-      { name: 'Biuro rachunkowe', company: '', industry: 'Biura rachunkowe', why: 'Źródło kontaktów do branży budowlanej' }
-    ]
-  });
-  const b = newCard({
-    name: 'Ewa Zielińska', group: 'grupa BNI Przykład', city: 'Kraków', company: 'Biuro rachunkowe', phone: '+48 600 000 002', email: 'ewa@example.com', accent: '#2a7de1',
-    offered: [{ name: 'Marek Lis', company: 'Deweloper Plus', industry: 'Budowlana – deweloper', relation: 'Klient', scale: 'Duża firma' }],
-    sought: [{ name: 'Inwestor', company: '', industry: 'Nieruchomości inwestycyjne', why: 'Poszerzenie portfela klientów' }]
-  });
-  state.cards.push(a, b); currentId = a.id; save(); renderList(); toast('Wczytano 2 przykładowe wizytówki');
+$('#btn-demo').onclick = async () => {
+  try {
+    const d = await (await fetch('demo.json')).json();
+    d.cards.forEach(c => { const k = state.cards.findIndex(x => x.id === c.id); if (k >= 0) state.cards[k] = c; else state.cards.push(c); });
+    (d.links || []).forEach(l => { if (!state.links.some(x => x.id === l.id)) state.links.push(l); });
+    currentId = d.cards[0].id; save(); renderList(); toast('Wczytano przykładowe wizytówki');
+  } catch (e) { toast('Nie udało się wczytać przykładu (wymaga http)'); }
 };
 
 /* ---------- edytor ---------- */
@@ -187,20 +174,26 @@ function fillSelect(sel, withCur = true) {
   sel.innerHTML = state.cards.map(c => `<option value="${c.id}">${esc(c.name || 'Bez nazwy')}</option>`).join('');
   if (withCur && currentId) sel.value = currentId;
 }
-function chunk(rows, size) { const out = []; for (let i = 0; i < Math.max(rows.length, 1); i += size) out.push(rows.slice(i, i + size)); return out; }
-function panelTable(title, red, cols, rows, offset) {
-  return `<div class="panel"><h3>${title} <em>${red}</em></h3><table><tr><th>Lp.</th>${cols.map(c => `<th>${c[1]}</th>`).join('')}</tr>` +
-    rows.map((r, i) => `<tr><td>${offset + i + 1}</td>${cols.map(([k]) => `<td>${esc(r[k] || '')}</td>`).join('')}</tr>`).join('') + '</table></div>';
+const OW = [14, 18, 18.6, 17, 13], SW = [14, 17, 16, 33.6];
+const cell = v => esc(v || '').replace(/ \/ /g, '<br>');
+function tablePanel(cols, widths, rows, start, sought) {
+  const trs = Array.from({ length: 10 }, (_, i) => { const r = rows[start + i] || {}; return `<tr><td class="lp">${start + i + 1}</td>${cols.map(([k]) => `<td>${cell(r[k])}</td>`).join('')}</tr>`; }).join('');
+  return `<div class="panel"><h3>Lista <em>TOP 20</em> ${sought ? 'poszukiwanych kontaktów biznesowych' : 'kontaktów biznesowych'}</h3>
+    <table class="tbl${sought ? ' s' : ''}"><colgroup><col style="width:4.2mm">${widths.map(w => `<col style="width:${w}mm">`).join('')}</colgroup>
+    <tr><th class="lp">Lp.</th>${cols.map(c => `<th>${c[1]}</th>`).join('')}</tr>${trs}</table></div>`;
 }
+const ICON_MAIL = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="1"/><path d="M2 6l10 8 10-8"/></svg>';
+const ICON_TEL = '<svg viewBox="0 0 24 24" fill="#fff"><path d="M6.6 10.8a15 15 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.6 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.250.2 2.450.6 3.600a1 1 0 01-.25 1z"/></svg>';
 function cardHTML(c, withQr) {
-  const off = filled(c.offered), sou = filled(c.sought);
-  let h = `<div class="sheet-card" style="--acc:${esc(c.accent)}">`;
-  h += `<div class="panel cover"><div><div class="logo">BNI</div></div><div class="row"><div><div class="nm">${esc(c.name)}</div><div class="sub">${esc(c.group)}${c.city ? '<br>' + esc(c.city) : ''}${c.company ? '<br>' + esc(c.company) : ''}</div>
-    <div class="ct">${[c.phone, c.phone2, c.email].filter(Boolean).map(esc).join('<br>')}</div></div>${withQr ? '<div class="qr" data-qr>…</div>' : ''}</div></div>`;
-  h += `<div class="panel"><ol>${c.qa.map((x, i) => `<li><b>${i + 1}. ${esc(x.q)}</b><span>${esc(x.a)}</span></li>`).join('')}</ol></div>`;
-  chunk(off, 10).forEach((r, i) => h += panelTable('Lista TOP 20', 'kontaktów biznesowych', OFFERED_COLS, r, i * 10));
-  chunk(sou, 10).forEach((r, i) => h += panelTable('Lista TOP 20', 'poszukiwanych kontaktów', SOUGHT_COLS, r, i * 10));
-  return h + '</div>';
+  const o = c.offered || [], s = c.sought || [];
+  const qa = `<div class="panel"><ol class="qa">${c.qa.map((x, i) => `<li><span class="n">${i + 1}.</span><div><b>${esc(x.q)}</b><i>${esc(x.a)}</i></div></li>`).join('')}</ol></div>`;
+  const tel = [c.phone, c.phone2].filter(Boolean).map(esc).join('<br>');
+  const cover = `<div class="panel cover"><div class="top"><div><div class="nm">${esc(c.name).replace(' ', '<br>')}</div><div class="sub">${esc(c.group)}${c.city ? '<br>' + esc(c.city) : ''}${c.company ? '<br>' + esc(c.company) : ''}</div></div>
+    <div class="rt"><div class="logo">BNI<sup>®</sup></div>${withQr ? '<div class="qr" data-qr>…</div>' : ''}</div></div>
+    <div class="bot"><div class="ct">${tel ? ICON_TEL + '<span>' + tel + '</span>' : ''}</div><div class="ct">${c.email ? ICON_MAIL + '<span>' + esc(c.email) + '</span>' : ''}</div></div></div>`;
+  return `<div class="sheet-card" style="--acc:${esc(c.accent || '#e8473f')}">
+    <div class="side"><div class="side-label">Strona A (awers)</div>${tablePanel(OFFERED_COLS, OW, o, 0)}${tablePanel(OFFERED_COLS, OW, o, 10)}${tablePanel(SOUGHT_COLS, SW, s, 0, true)}</div>
+    <div class="side"><div class="side-label">Strona B (rewers)</div>${tablePanel(SOUGHT_COLS, SW, s, 10, true)}${qa}${cover}</div></div>`;
 }
 /* ---- link online + QR ---- */
 async function pack(str) {

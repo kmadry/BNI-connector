@@ -1,0 +1,464 @@
+{
+ "cards": [
+  {
+   "id": "demo-dariusz",
+   "name": "Dariusz Alabrudziński",
+   "group": "grupa BNI SKYLINE",
+   "city": "Katowice",
+   "company": "",
+   "phone": "+48 889 70 70 71",
+   "phone2": "+357 99 130 733",
+   "email": "dariusz@zebra.cy",
+   "accent": "#e8473f",
+   "qa": [
+    {
+     "q": "Trzech najlepszych klientów / branże:",
+     "a": "medyczna - farmacja, handel międzynarodowy export - import, kolekcjoner nieruchomości"
+    },
+    {
+     "q": "Dlaczego klienci myślą, że jesteś dobry?",
+     "a": "Sam inwestuję i doradzam jak inwestować na Cyprze Południowym i tylko tutaj, nie mam żadnych innych kierunków, ponieważ na miejscu nr 1 jest tylko jedno miejsce. Pokazuję tylko nieruchomości i auta, które sam bym kupił lub już kupiłem."
+    },
+    {
+     "q": "Potencjalni najlepsi klienci:",
+     "a": "IT, doradcy inwestycyjni, agencje nieruchomości"
+    },
+    {
+     "q": "Co powiedzieć?",
+     "a": "Czy jesteś w pełni zadowolony z obecnych inwestycji pod względem zyskowności i bezpieczeństwa? Jeżeli tak, to czy interesuje Cię darmowy audyt twoich inwestycji tak na spokojny sen."
+    },
+    {
+     "q": "Kto przekazuje Ci rekomendacje?",
+     "a": "Agencje nieruchomości, doradcy inwestycyjni, prawnicy, biura rachunkowe, franczyzy."
+    },
+    {
+     "q": "Skąd się wzięła Twoja najlepsza rekomendacja?",
+     "a": "Wspólne hobby z przedsiębiorcom ze ściany wschodniej i rekomendacja z BNI od członka, z którym się znam kilkanaście lat."
+    },
+    {
+     "q": "Czego słuchać?",
+     "a": "Koniec flipów w PL, Za słabe wzrosty nieruchomości i niskie ROI w PL, geopolityka, przezimowanie."
+    },
+    {
+     "q": "Najbardziej rentowna usługa:",
+     "a": "Sprzedaż nieruchomości i invest w auta na CY."
+    }
+   ],
+   "offered": [
+    {
+     "name": "Dariusz Ciećiura",
+     "company": "GT Factory Łódź",
+     "industry": "Budowlana - deweloper",
+     "relation": "Znajomy / Klient",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Piotr, Adam Jędrzejewski",
+     "company": "Bracia Sadownicy Warszawa",
+     "industry": "Spożywcza producent (owoce i przetwory)",
+     "relation": "Znajomy / Klient",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Antoni Bocheński",
+     "company": "Run Detal + Chłodnia Włocławek",
+     "industry": "Spożywcza producent (mrożonki)",
+     "relation": "Znajomy / Klient",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Łukasz Dubielak",
+     "company": "Dubielak + Dubimex",
+     "industry": "Spożywcza producent (mięso i pieczywo)",
+     "relation": "Znajomy / Klient",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Krzysztof Baranowski",
+     "company": "Sieć aptek i przychodni Puls kuj-pom",
+     "industry": "Apteki i przychodnie lekarskie",
+     "relation": "Znajomy / Klient",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Łukasz, Dawid Dąbkowski",
+     "company": "Eurodom Płock",
+     "industry": "Budowlana - GW",
+     "relation": "Znajomy / Klient",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Grzegorz Stawiarski",
+     "company": "Barbat Nowy Sącz",
+     "industry": "Tekstylia hotelowe",
+     "relation": "Znajomy / Partner biznesowy",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Armand Podczerwiński",
+     "company": "Indepro Kraków",
+     "industry": "Deweloper + franczyza biur nieruchomości",
+     "relation": "Znajomy / Partner biznesowy",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Patryk Stasiuk",
+     "company": "RTR / Reiter Toruń",
+     "industry": "Art. hydrauliczne producent i importer",
+     "relation": "Znajomy / Klient",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Sebastian Baranowski",
+     "company": "Toyota Włocławek +Bydgoszcz (+3x BMW)",
+     "industry": "Motoryzacyjna dealer samochodowy",
+     "relation": "Znajomy / Klient",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Patryk Mazur",
+     "company": "Carbe Wrocław",
+     "industry": "Motoryzacyjna auto broker samochodowy",
+     "relation": "Znajomy / Klient",
+     "scale": "Średnia firma"
+    },
+    {
+     "name": "Maciej Świerczyński",
+     "company": "Grow4U",
+     "industry": "M&A",
+     "relation": "Znajomy / Partner biznesowy",
+     "scale": "Średnia firma"
+    },
+    {
+     "name": "Krzysztof Skonieczka",
+     "company": "Door-to-door",
+     "industry": "OZE",
+     "relation": "Znajomy / Klient",
+     "scale": "Średnia firma"
+    },
+    {
+     "name": "Radosław Gronikowski",
+     "company": "Inpol Inowrocław",
+     "industry": "Spożywcza producent (krówki)",
+     "relation": "Znajomy / Klient",
+     "scale": "Średnia firma"
+    },
+    {
+     "name": "Adrian Kaleta",
+     "company": "Skywater Wrocław",
+     "industry": "Woda do biur, szkół i fabryk",
+     "relation": "Znajomy / Partner biznesowy",
+     "scale": "Średnia firma"
+    },
+    {
+     "name": "Adam Zalaszewski",
+     "company": "Cararena Poznań",
+     "industry": "Aukcje samochodów",
+     "relation": "Znajomy / Klient",
+     "scale": "Średnia firma"
+    },
+    {
+     "name": "Leszek Lewandowski",
+     "company": "Galileusz Włocławek",
+     "industry": "Korepetycje - franczyza",
+     "relation": "Znajomy / Klient",
+     "scale": "Średnia firma"
+    },
+    {
+     "name": "Radosław Rogiewicz",
+     "company": "PKB",
+     "industry": "Biznes przy sporcie",
+     "relation": "Znajomy / Klient",
+     "scale": "Średnia firma"
+    },
+    {
+     "name": "Agnieszka Czaplińska",
+     "company": "Czapla Coach & More",
+     "industry": "DISC - kolory umysłu",
+     "relation": "Znajomy / Partner biznesowy",
+     "scale": "Mała firma"
+    },
+    {
+     "name": "Sławomir Łebkowski",
+     "company": "Tork / otopadel",
+     "industry": "Dozowniki mat czystościowych",
+     "relation": "Znajomy / Partner biznesowy",
+     "scale": "Mała firma"
+    }
+   ],
+   "sought": [
+    {
+     "name": "Jakub Szynklewski",
+     "company": "Z piekła rodem franczyzodawca",
+     "industry": "piekarnie i cukiernie",
+     "why": "Branża często inwestująca na Cyprze hybrydowo podatki, nieruchomości, inwestycje"
+    },
+    {
+     "name": "Dariusz, Stanisław, Ryszard Oskroba",
+     "company": "Oskroba franczyzodawca",
+     "industry": "Spożywcza: piekarnie",
+     "why": "Branża często inwestująca na Cyprze hybrydowo podatki, nieruchomości, inwestycje"
+    },
+    {
+     "name": "Franczyzobiorca",
+     "company": "Żabka",
+     "industry": "Spożywcza: sklepy",
+     "why": "Multifranczyzobiorców i kolekcjonerów nieruchomości-inwestycje nadwyżek finansowych"
+    },
+    {
+     "name": "Jerzy Klemba",
+     "company": "Ergo Technology & Services S.A.",
+     "industry": "IT Limassol cypryjski Manhattan",
+     "why": "Pracownicy w modelu outsourcing'owym = IP BOX CY = inwestycje CY"
+    },
+    {
+     "name": "Adrianna i Łukasz Walas",
+     "company": "AK Beauty Sp. z o.o.",
+     "industry": "Beauty",
+     "why": "Inwestycje nadwyżek finansowych branża wysokomarżowa"
+    },
+    {
+     "name": "Gabriel Ferliński",
+     "company": "Instalprojekt",
+     "industry": "Biuro architektoniczne",
+     "why": "Źródło kontaktów do branży budowlanej, która inwestuje na CY"
+    },
+    {
+     "name": "Góralski Bartosz",
+     "company": "Volante.pl",
+     "industry": "Wycena Znaków Towarowych",
+     "why": "Znak towarowy na spółkę na CY, a następnie licencja / dzierżawa PL"
+    },
+    {
+     "name": "Paweł Szymański",
+     "company": "Federacja Rynku Nieruchomości (PFRN)",
+     "industry": "agencja nieruchomości",
+     "why": "Rozszerzenie oferty"
+    },
+    {
+     "name": "Artur Białkowski",
+     "company": "Pracodawcy Medycyny Prywatnej",
+     "industry": "medyczna-duże nadwyżki finansowe i brak czasu",
+     "why": "Emerytura, second-home, ochrona kapitału"
+    },
+    {
+     "name": "Spzoo",
+     "company": "osoby zarządzające majątkami",
+     "industry": "private equity & gwiazdy",
+     "why": "Dywersyfikacja geograficzna, biznes, bliskość geograficzna"
+    },
+    {
+     "name": "Tomasz Hole",
+     "company": "Polski Związek Żeglarski (PZŻ)",
+     "industry": "żeglarze",
+     "why": "Dywersyfikacja portfela, najem wakacyjny, hobby, sezon całym rokiem"
+    },
+    {
+     "name": "Firmy dochodowe",
+     "company": "dużo kasy w kasie",
+     "industry": "doradca inwestycyjny",
+     "why": "Brak dywidendy, Wiedza o zamożnych Klientach - rozszerzenie oferty"
+    },
+    {
+     "name": "UA",
+     "company": "agencje zatrudnienia",
+     "industry": "ucieczka przed ryzykiem geopolitycznym",
+     "why": "Zakup nieruchomości pow. 300K EUR = permanent visa"
+    },
+    {
+     "name": "Kolekcjonerów nieruchomości",
+     "company": "$$$ lub Plan B",
+     "industry": "nieruchomości",
+     "why": "Osoby chcące geograficznie zdywersyfikować swój portfel nieruchomości"
+    },
+    {
+     "name": "Biura rachunkowe",
+     "company": "Opole, Kielce, Kraków, ...",
+     "industry": "Biura rachunkowe",
+     "why": "Wiedza o zamożnych Klientach"
+    },
+    {
+     "name": "otwierających biznes w nowym kraju",
+     "company": "37% firm nieotworzyłoby się ponownie w PL",
+     "industry": "z licznymi kontrolami środowisko",
+     "why": "Lubimy pomagać start-up'om oraz każdy duży był kiedyś mały, a często jest to kolejna firma w grupie"
+    },
+    {
+     "name": "Inwestorów",
+     "company": "Szukamy osób którym zostaje",
+     "industry": "Kto już zainwestował i nie chce tego powtórzyć",
+     "why": "Bezpieczna i pewna inwestycja w branże niskiego ryzyka z zabezpieczeniem"
+    },
+    {
+     "name": "Fundacje rodzinne",
+     "company": "Źródła takich klientów",
+     "industry": "Prawna: kancelarie i notariusze",
+     "why": "Kumulacja kapitału i potrzeby inwestycyjne"
+    },
+    {
+     "name": "Firmy produkcyjne i handlowe export",
+     "company": "Źródła doradcy exportowi",
+     "industry": "Produkcja i handel zagraniczny",
+     "why": "Wejście na rynek cypryjski"
+    },
+    {
+     "name": "Firmy płacące duże podatki",
+     "company": "POL EXIT",
+     "industry": "Wysoko dochodowe",
+     "why": "CY = u mnie nieruchomości Planowanie podatkowe"
+    }
+   ]
+  },
+  {
+   "id": "demo-jan",
+   "name": "Jan Kowalski",
+   "group": "grupa BNI Przykład",
+   "city": "Katowice",
+   "company": "Doradztwo inwestycyjne",
+   "phone": "+48 600 000 001",
+   "phone2": "",
+   "email": "jan@example.com",
+   "accent": "#2a7de1",
+   "qa": [
+    {
+     "q": "Trzech najlepszych klientów / branże:",
+     "a": "medyczna, handel międzynarodowy, nieruchomości"
+    },
+    {
+     "q": "Dlaczego klienci myślą, że jesteś dobry?",
+     "a": "Specjalizuję się w jednym rynku i pokazuję tylko oferty, które sam bym kupił."
+    },
+    {
+     "q": "Potencjalni najlepsi klienci:",
+     "a": "IT, doradcy inwestycyjni, agencje nieruchomości"
+    },
+    {
+     "q": "Co powiedzieć?",
+     "a": "Czy jesteś w pełni zadowolony z obecnych inwestycji?"
+    },
+    {
+     "q": "Kto przekazuje Ci rekomendacje?",
+     "a": "Agencje nieruchomości, prawnicy, biura rachunkowe"
+    },
+    {
+     "q": "Skąd się wzięła Twoja najlepsza rekomendacja?",
+     "a": "Wspólne hobby i rekomendacja z BNI"
+    },
+    {
+     "q": "Czego słuchać?",
+     "a": "Koniec flipów, niskie ROI, geopolityka"
+    },
+    {
+     "q": "Najbardziej rentowna usługa:",
+     "a": "Sprzedaż nieruchomości i inwestycje w auta"
+    }
+   ],
+   "offered": [
+    {
+     "name": "Anna Nowak",
+     "company": "Budimex Sp. z o.o.",
+     "industry": "Budowlana - deweloper",
+     "relation": "Znajomy / Klient",
+     "scale": "Duża firma"
+    },
+    {
+     "name": "Piotr Wiśniewski",
+     "company": "Smak",
+     "industry": "Spożywcza producent",
+     "relation": "Znajomy / Klient",
+     "scale": "Średnia firma"
+    }
+   ],
+   "sought": [
+    {
+     "name": "Franczyzobiorca",
+     "company": "Żabka",
+     "industry": "Spożywcza: sklepy",
+     "why": "Multifranczyzobiorcy i kolekcjonerzy nieruchomości"
+    },
+    {
+     "name": "Biuro rachunkowe",
+     "company": "",
+     "industry": "Biura rachunkowe",
+     "why": "Źródło kontaktów do branży budowlanej"
+    }
+   ]
+  },
+  {
+   "id": "demo-ewa",
+   "name": "Ewa Zielińska",
+   "group": "grupa BNI Przykład",
+   "city": "Kraków",
+   "company": "Biuro rachunkowe",
+   "phone": "+48 600 000 002",
+   "phone2": "",
+   "email": "ewa@example.com",
+   "accent": "#e8473f",
+   "qa": [
+    {
+     "q": "Trzech najlepszych klientów / branże:",
+     "a": "budowlana, e-commerce, gastronomia"
+    },
+    {
+     "q": "Dlaczego klienci myślą, że jesteś dobry?",
+     "a": "Odpowiadam w ciągu godziny i tłumaczę prostym językiem."
+    },
+    {
+     "q": "Potencjalni najlepsi klienci:",
+     "a": "deweloperzy, inwestorzy w nieruchomości"
+    },
+    {
+     "q": "Co powiedzieć?",
+     "a": "Czy wiesz, ile naprawdę zostaje Ci z najmu?"
+    },
+    {
+     "q": "Kto przekazuje Ci rekomendacje?",
+     "a": "Doradcy inwestycyjni, prawnicy"
+    },
+    {
+     "q": "Skąd się wzięła Twoja najlepsza rekomendacja?",
+     "a": "Z BNI, od dewelopera, któremu zrobiłam audyt"
+    },
+    {
+     "q": "Czego słuchać?",
+     "a": "Zmiany podatkowe dla najmu"
+    },
+    {
+     "q": "Najbardziej rentowna usługa:",
+     "a": "Pełna księgowość dla spółek nieruchomościowych"
+    }
+   ],
+   "offered": [
+    {
+     "name": "Marek Lis",
+     "company": "Deweloper Plus",
+     "industry": "Budowlana - deweloper",
+     "relation": "Klient",
+     "scale": "Duża firma"
+    }
+   ],
+   "sought": [
+    {
+     "name": "Inwestor",
+     "company": "",
+     "industry": "Nieruchomości inwestycyjne",
+     "why": "Poszerzenie portfela klientów"
+    }
+   ]
+  }
+ ],
+ "links": [
+  {
+   "id": "demo-link-1",
+   "from": "demo-ewa",
+   "to": "demo-jan",
+   "note": "Szuka inwestorów w nieruchomości"
+  },
+  {
+   "id": "demo-link-2",
+   "from": "demo-ewa",
+   "to": "demo-dariusz",
+   "note": "Dariusz szuka biur rachunkowych"
+  }
+ ]
+}
