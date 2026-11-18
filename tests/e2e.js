@@ -25,9 +25,9 @@ process.on('exit', () => {});
 
   // magazyn
   await p.click('#tabs [data-view=contacts]');
-  if (await p.locator('.ct').count() < 30) { await p.click('#ct-demo'); await p.waitForTimeout(800); }
-  const n = await p.locator('.ct').count(); ok('magazyn: kontakty widoczne', n >= 30, n + ' kontaktów');
-  await p.fill('#ct-search', 'Alfa'); const f = await p.locator('.ct').count(); ok('magazyn: wyszukiwanie filtruje', f > 0 && f < n, f + ' wyników');
+  if (await p.locator('.ct-row').count() < 30) { await p.click('#ct-demo'); await p.waitForTimeout(800); }
+  const n = await p.locator('.ct-row').count(); ok('magazyn: kontakty widoczne', n >= 30, n + ' kontaktów');
+  await p.fill('#ct-search', 'Alfa'); const f = await p.locator('.ct-row').count(); ok('magazyn: wyszukiwanie filtruje', f > 0 && f < n, f + ' wyników');
   await p.fill('#ct-search', ''); await p.screenshot({ path: OUT + '/02-kontakty.png' });
 
   // edytor + przeciąganie
@@ -78,7 +78,9 @@ process.on('exit', () => {});
   const parsed = await p.evaluate(() => window.BNIScan.parseCardText('Jan Przykładowy\nDyrektor Handlowy\nAlfa Budowa Sp. z o.o.\ntel. +48 600 000 123\njan@example.com\nwww.example.com\nul. Testowa 1, 40-001 Katowice'));
   ok('skan: parser wyciąga e-mail/tel/firmę', /jan@example.com/.test(JSON.stringify(parsed)) && /600 000 123|600000123/.test(JSON.stringify(parsed)) && /Alfa Budowa/.test(JSON.stringify(parsed)), JSON.stringify(parsed).slice(0, 140));
   await p.screenshot({ path: OUT + '/05-skan.png' });
-  await p.click('#tabs [data-view=preview]'); await p.waitForSelector('.qr svg'); await p.screenshot({ path: OUT + '/06-druk.png' });
+  await p.click('#tabs [data-view=preview]'); await p.waitForSelector('.qr svg');
+  ok('okladka: telefon i e-mail czytelne (kolor rozny od tla)', await p.evaluate(() => { const e = document.querySelector('.cover .bot .ct'); const cs = getComputedStyle(e); return cs.color !== cs.backgroundColor && cs.backgroundColor === 'rgba(0, 0, 0, 0)'; }));
+ await p.screenshot({ path: OUT + '/06-druk.png' });
 
   // mobile
   const m = await (await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true })).newPage();
@@ -86,13 +88,13 @@ process.on('exit', () => {});
   await m.goto(base); await m.waitForTimeout(2000);
   const navBox = await m.locator('.rail').boundingBox();
   ok('mobile: dolna nawigacja', navBox.y > 700 && navBox.width >= 385, JSON.stringify(navBox));
-  const overflow = await m.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+  const overflow = await m.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   ok('mobile: brak poziomego przewijania', overflow <= 1, 'nadmiar ' + overflow + 'px');
   await m.screenshot({ path: OUT + '/m1-wizytowki.png' });
   await m.click('#tabs [data-view=contacts]'); await m.waitForTimeout(400); await m.screenshot({ path: OUT + '/m2-kontakty.png' });
-  ok('mobile: kontakty bez przewijania poziomego', (await m.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 1);
+  ok('mobile: kontakty bez przewijania poziomego', (await m.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 1);
   await m.click('#tabs [data-view=cards]'); await m.click('.tile >> nth=0'); await m.waitForTimeout(500); await m.screenshot({ path: OUT + '/m3-edytor.png' });
-  ok('mobile: edytor bez przewijania poziomego', (await m.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 1);
+  ok('mobile: edytor bez przewijania poziomego', (await m.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 1);
 
   ok('brak błędów JS', errs.length === 0, errs.join(' | '));
   const fails = results.filter(r => r[0] === 'FAIL').length;

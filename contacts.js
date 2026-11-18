@@ -14,7 +14,8 @@ const hue = s => { let h = 0; for (const ch of String(s)) h = (h * 31 + ch.charC
 const avatar = c => `<span class="av" style="--h:${hue(fullName(c))}" aria-hidden="true">${esc(initials(c).toUpperCase())}</span>`;
 const arr = v => Array.isArray(v) ? v : (v ? [v] : []);
 const blank = r => !r || !Object.values(r).some(v => String(v || '').trim());
-const matches = (c, q) => !q || [fullName(c), c.company, c.title, c.industry, c.city, c.notes, arr(c.emails).join(' '), arr(c.phones).join(' '), arr(c.tags).join(' ')].join(' ').toLowerCase().includes(q);
+const fold = t => String(t || '').toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const matches = (c, q) => !q || fold([fullName(c), c.company, c.title, c.industry, c.city, c.notes, arr(c.emails).join(' '), arr(c.phones).join(' '), arr(c.tags).join(' ')].join(' ')).includes(fold(q));
 
 /* ---------- snackbar z cofnij ---------- */
 let snackT;
@@ -40,7 +41,7 @@ function renderTags() {
   sel.innerHTML = '<option value="">Wszystkie tagi</option>' + tags.map(t => `<option${t === v ? ' selected' : ''}>${esc(t)}</option>`).join('');
 }
 function contactRow(c) {
-  return `<article class="ct" data-id="${esc(c.id)}" tabindex="0">
+  return `<article class="ct-row" data-id="${esc(c.id)}" tabindex="0" role="button">
     ${avatar(c)}
     <div class="ct-main"><b>${esc(fullName(c))}</b><span>${esc([c.title, c.company].filter(Boolean).join(' · ')) || '—'}</span>
       <small>${esc([arr(c.emails)[0], arr(c.phones)[0], c.city].filter(Boolean).join(' · '))}</small></div>
@@ -58,13 +59,13 @@ function render() {
 $('#ct-list').addEventListener('click', e => {
   const act = e.target.closest('[data-act]');
   if (act) return ({ new: () => openForm(), scan: () => B.show('scan'), demo: loadDemo })[act.dataset.act]();
-  const row = e.target.closest('.ct'); if (!row) return;
+  const row = e.target.closest('.ct-row'); if (!row) return;
   const c = list().find(x => x.id === row.dataset.id); if (!c) return;
   const add = e.target.closest('[data-add]');
   if (add) return addToCard(c, add.dataset.add);
   openForm(c);
 });
-$('#ct-list').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.classList.contains('ct')) { const c = list().find(x => x.id === e.target.dataset.id); if (c) openForm(c); } });
+$('#ct-list').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('ct-row')) { e.preventDefault(); const c = list().find(x => x.id === e.target.dataset.id); if (c) openForm(c); } });
 ['ct-search', 'ct-rel', 'ct-tag', 'ct-sort'].forEach(id => $('#' + id).addEventListener('input', render));
 
 /* ---------- formularz kontaktu ---------- */
@@ -83,6 +84,9 @@ function openForm(c) {
     if (v === 'delete') { if (!confirm('Usunąć ten kontakt?')) return; const idx = list().findIndex(x => x.id === c.id); const copy = list()[idx]; list().splice(idx, 1); B.save(); render(); renderTray(); snack('Usunięto kontakt', () => { list().push(copy); B.save(); render(); renderTray(); }); return; }
     if (v !== 'save') return;
     const d = Object.fromEntries(new FormData(form));
+    if (!(d.firstName.trim() || d.lastName.trim() || d.company.trim())) { ev.preventDefault(); toast('Podaj imię, nazwisko lub firmę'); form.elements.firstName.focus(); return; }
+    const badMail = String(d.emails || '').split(/[,;]/).map(x => x.trim()).filter(Boolean).find(x => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x));
+    if (badMail) { ev.preventDefault(); toast('Niepoprawny e-mail: ' + badMail); form.elements.emails.focus(); return; }
     const split = s => String(s || '').split(/[,;]/).map(x => x.trim()).filter(Boolean);
     Object.assign(c, { firstName: d.firstName.trim(), lastName: d.lastName.trim(), company: d.company.trim(), title: d.title.trim(), industry: d.industry.trim(), city: d.city.trim(), website: d.website.trim(), emails: split(d.emails), phones: split(d.phones), tags: split(d.tags), relation: d.relation, scale: d.scale, notes: d.notes.trim() });
     if (isNew) list().push(c);
@@ -164,13 +168,13 @@ const cols = key => key === 'offered' ? B.OFFERED_COLS : B.SOUGHT_COLS;
 function insertRow(key, row, at) {
   const card = B.cur(); if (!card) { toast('Najpierw wybierz wizytówkę'); return false; }
   const rows = card[key];
-  const before = JSON.stringify(rows);
+  const before = JSON.stringify(rows); let verb = 'Dodano';
   if (at == null) { const e = rows.findIndex(blank); if (e >= 0) rows[e] = row; else if (rows.length < MAX) rows.push(row); else { toast(`Lista ma już ${MAX} wierszy`); return false; } }
   else if (blank(rows[at])) rows[at] = row;
   else if (rows.length < MAX) rows.splice(at, 0, row);
-  else { const e = rows.map(blank).lastIndexOf(true); if (e >= 0) { rows.splice(at, 0, row); rows.splice(e >= at ? e + 1 : e, 1); } else { rows[at] = row; toast('Lista pełna – zastąpiono wiersz ' + (at + 1)); } }
+  else { const e = rows.map(blank).lastIndexOf(true); if (e >= 0) { rows.splice(at, 0, row); rows.splice(e >= at ? e + 1 : e, 1); } else { rows[at] = row; verb = 'Zastąpiono wiersz ' + (at + 1); } }
   B.save(); if (!$('#view-editor').classList.contains('active')) { /* tylko dane */ } else B.renderTable(key, cols(key));
-  snack(`Dodano: ${row.name}`, () => { card[key] = JSON.parse(before); B.save(); if ($('#view-editor').classList.contains('active')) B.renderTable(key, cols(key)); });
+  snack(`${verb}: ${row.name}`, () => { card[key] = JSON.parse(before); B.save(); if ($('#view-editor').classList.contains('active')) B.renderTable(key, cols(key)); });
   return true;
 }
 function addToCard(c, key) { if (insertRow(key, mk(c, key))) { const card = B.cur(); if (card) toast(`${fullName(c)} → ${card.name || 'wizytówka'} (${key === 'offered' ? 'oferowani' : 'poszukiwani'})`); } }
@@ -186,14 +190,15 @@ function renderTray() {
   const tray = $('#ct-tray'), has = !!B.cur();
   tray.hidden = !has; if (!has) return;
   const q = ($('#tray-q') && $('#tray-q').value || '').toLowerCase();
-  const rows = list().filter(c => matches(c, q)).slice(0, 80);
+  const all = list().filter(c => matches(c, q)), rows = all.slice(0, 80);
   tray.innerHTML = `<div class="tray-head"><h3>Magazyn kontaktów</h3><small>${list().length} kontaktów</small></div>
     <input id="tray-q" type="search" placeholder="Szukaj w magazynie…" value="${esc(q)}" aria-label="Szukaj w magazynie">
     <p class="hint hint-drag">Chwyć <b>⋮⋮</b> i upuść na wiersz tabeli <b>TOP 20</b>. Możesz też użyć przycisków poniżej (działają z klawiatury).</p><p class="hint hint-tap">Dotknij <b>+ Oferuję</b> lub <b>+ Szukam</b>, aby dodać kontakt do list TOP 20.</p>
-    <div class="tray-list">${rows.length ? rows.map(c => `<div class="tc" data-id="${esc(c.id)}"><span class="dh" data-drag="${esc(c.id)}" role="button" tabindex="0" aria-label="Przeciągnij ${esc(fullName(c))}" title="Przeciągnij">⋮⋮</span>${avatar(c)}<span class="tc-main"><b>${esc(fullName(c))}</b><small>${esc(c.company || c.industry || '')}</small></span><span class="tc-act"><button class="small" data-add="offered" aria-label="Dodaj ${esc(fullName(c))} do oferowanych" title="Dodaj do TOP 20 oferowanych">+ Oferuję</button><button class="small" data-add="sought" aria-label="Dodaj ${esc(fullName(c))} do poszukiwanych" title="Dodaj do TOP 20 poszukiwanych">+ Szukam</button></span></div>`).join('') : `<div class="empty small"><p>${list().length ? 'Brak wyników.' : 'Magazyn jest pusty.'}</p>${list().length ? '' : '<button class="small primary" data-demo>Wczytaj przykładowe</button> <button class="small" data-goscan>Skanuj</button>'}</div>`}</div>`;
+    ${all.length > rows.length ? `<p class="hint">Pokazano ${rows.length} z ${all.length} – zawęź wyszukiwanie.</p>` : ''}<div class="tray-list">${rows.length ? rows.map(c => `<div class="tc" data-id="${esc(c.id)}"><span class="dh" data-drag="${esc(c.id)}" role="button" tabindex="0" aria-label="Przeciągnij ${esc(fullName(c))}" title="Przeciągnij">⋮⋮</span>${avatar(c)}<span class="tc-main"><b>${esc(fullName(c))}</b><small>${esc(c.company || c.industry || '')}</small></span><span class="tc-act"><button class="small" data-add="offered" aria-label="Dodaj ${esc(fullName(c))} do oferowanych" title="Dodaj do TOP 20 oferowanych">+ Oferuję</button><button class="small" data-add="sought" aria-label="Dodaj ${esc(fullName(c))} do poszukiwanych" title="Dodaj do TOP 20 poszukiwanych">+ Szukam</button></span></div>`).join('') : `<div class="empty small"><p>${list().length ? 'Brak wyników.' : 'Magazyn jest pusty.'}</p>${list().length ? '' : '<button class="small primary" data-demo>Wczytaj przykładowe</button> <button class="small" data-goscan>Skanuj</button>'}</div>`}</div>`;
   const ol = $('#tbl-offered') && $('#tbl-offered').closest('.tablewrap'), sl = $('#tbl-sought') && $('#tbl-sought').closest('.tablewrap');
   if (ol) ol.dataset.zone = 'offered'; if (sl) sl.dataset.zone = 'sought';
 }
+$('#ct-tray').addEventListener('keydown', e => { const h = e.target.closest && e.target.closest('.dh'); if (h && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); const b = h.closest('.tc').querySelector('[data-add]'); if (b) b.focus(); } });
 $('#ct-tray').addEventListener('input', e => { if (e.target.id === 'tray-q') { const p = e.target.selectionStart; renderTray(); const n = $('#tray-q'); n.focus(); n.setSelectionRange(p, p); } });
 $('#ct-tray').addEventListener('click', e => {
   if (e.target.closest('[data-demo]')) return loadDemo();
@@ -219,11 +224,20 @@ document.addEventListener('pointermove', e => {
     const g = document.createElement('div'); g.className = 'drag-ghost'; g.textContent = ghostLabel(drag.src); document.body.appendChild(g); drag.g = g;
   }
   e.preventDefault();
+  drag.lx = e.clientX; drag.ly = e.clientY;
   drag.g.style.transform = `translate(${e.clientX + 12}px,${e.clientY + 12}px)`;
-  $$('.drop-over').forEach(n => n.classList.remove('drop-over'));
-  const t = dropTarget(e.clientX, e.clientY); drag.t = t; if (t) t.el.classList.add('drop-over');
-  const m = 70; if (e.clientY < m) window.scrollBy(0, -14); else if (e.clientY > innerHeight - m) window.scrollBy(0, 14);
+  updateTarget();
+  if (!drag.raf) drag.raf = requestAnimationFrame(autoscroll);
 }, { passive: false });
+function updateTarget() {
+  $$('.drop-over').forEach(n => n.classList.remove('drop-over'));
+  const t = dropTarget(drag.lx, drag.ly); drag.t = t; if (t) t.el.classList.add('drop-over');
+}
+function autoscroll() {
+  if (!drag || !drag.on) return; const m = 70, y = drag.ly;
+  if (y < m) { window.scrollBy(0, -14); updateTarget(); } else if (y > innerHeight - m) { window.scrollBy(0, 14); updateTarget(); }
+  drag.raf = requestAnimationFrame(autoscroll);
+}
 function dropTarget(x, y) {
   for (const el of document.elementsFromPoint(x, y)) {
     const row = el.closest && el.closest('tr[data-drop]');
@@ -235,7 +249,7 @@ function dropTarget(x, y) {
 }
 function endDrag(commit) {
   if (!drag) return; const d = drag; drag = null;
-  document.body.classList.remove('dragging'); $$('.drop-over').forEach(n => n.classList.remove('drop-over')); if (d.g) d.g.remove();
+  if (d.raf) cancelAnimationFrame(d.raf); document.body.classList.remove('dragging'); $$('.drop-over').forEach(n => n.classList.remove('drop-over')); if (d.g) d.g.remove();
   if (!d.on || !commit || !d.t) return;
   if (d.src.kind === 'contact') { const c = list().find(x => x.id === d.src.id); if (c) insertRow(d.t.key, mk(c, d.t.key), d.t.i); }
   else moveRow(d.src.key, d.src.i, d.t.i);

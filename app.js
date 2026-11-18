@@ -26,8 +26,9 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const uid = () => Math.random().toString(36).slice(2, 10);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
+const normCard = c => { const d = newCard(); const o = Object.assign({}, d, c); o.qa = Array.isArray(c.qa) && c.qa.length ? c.qa : d.qa; o.offered = Array.isArray(c.offered) && c.offered.length ? c.offered : [{}]; o.sought = Array.isArray(c.sought) && c.sought.length ? c.sought : [{}]; return o; };
 function load() {
-  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.cards)) return { cards: s.cards, links: s.links || [], contacts: s.contacts || [] }; } catch (e) {}
+  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.cards)) return { cards: s.cards.map(normCard), links: s.links || [], contacts: s.contacts || [] }; } catch (e) {}
   return { cards: [], links: [], contacts: [] };
 }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} schedulePush(); }
@@ -47,8 +48,9 @@ async function rest(path, opt = {}) {
 async function pull() {
   if (!cloud) return false;
   try {
+    if (dirty) await push();
     const [cs, ls, ks] = await Promise.all([rest('bni_cards?select=id,data'), rest('bni_links?select=id,from_id,to_id,note'), rest('bni_contacts?select=id,data')]);
-    const remote = { cards: cs.map(r => r.data), links: ls.map(l => ({ id: l.id, from: l.from_id, to: l.to_id, note: l.note })), contacts: ks.map(r => r.data) };
+    const remote = { cards: cs.map(r => normCard(r.data || {})), links: ls.map(l => ({ id: l.id, from: l.from_id, to: l.to_id, note: l.note })), contacts: ks.map(r => r.data) };
     remoteCards = new Set(cs.map(r => r.id)); remoteLinks = new Set(ls.map(l => l.id)); remoteContacts = new Set(ks.map(r => r.id));
     if (!localStorage.getItem('bni-synced')) { // pierwsze uruchomienie: dołącz lokalne wizytówki
       state.cards.forEach(c => { if (!remoteCards.has(c.id)) remote.cards.push(c); });
@@ -62,6 +64,7 @@ async function pull() {
     setSync('☁ synchronizacja OK', 'ok'); return true;
   } catch (e) { setSync('☁ offline (dane lokalne)', 'err'); return false; }
 }
+window.addEventListener('online', () => { if (dirty) push(); });
 function schedulePush() { if (!cloud) return; dirty = true; clearTimeout(pushTimer); pushTimer = setTimeout(push, 700); }
 function push() {
   if (!cloud || !dirty) return pushing;
@@ -155,7 +158,7 @@ function renderTable(key, cols) {
   const c = cur(), rows = c[key];
   $('#tbl-' + key).className = 'edit';
   $('#tbl-' + key).innerHTML = `<tr><th>#</th>${cols.map(x => `<th>${x[1]}</th>`).join('')}<th></th></tr>` +
-    rows.map((r, i) => `<tr data-drop="${key}" data-i="${i}"><td class="grip" data-grip title="Przeciągnij, aby zmienić kolejność" aria-label="Przeciągnij wiersz ${i + 1}">⋮⋮ ${i + 1}</td>${cols.map(([k]) => `<td><input data-t="${key}" data-i="${i}" data-k="${k}" value="${esc(r[k] || '')}"></td>`).join('')}<td><button class="small" data-del="${key}" data-i="${i}">✕</button></td></tr>`).join('');
+    rows.map((r, i) => `<tr data-drop="${key}" data-i="${i}"><td class="grip" data-grip tabindex="0" role="button" title="Przeciągnij (Alt+↑/↓ z klawiatury)" aria-label="Przenieś wiersz ${i + 1} (Alt+strzałka)">⋮⋮ ${i + 1}</td>${cols.map(([k]) => `<td><input data-t="${key}" data-i="${i}" data-k="${k}" value="${esc(r[k] || '')}"></td>`).join('')}<td><button class="small" data-del="${key}" data-i="${i}" aria-label="Usuń wiersz ${i + 1}">✕</button></td></tr>`).join('');
   $('#add-' + key).disabled = rows.length >= MAX_ROWS;
 }
 $('#editor').addEventListener('input', e => {
@@ -326,7 +329,7 @@ async function showQr(id) {
     const url = await onlineUrl(c); qrCur = { c, url };
     $('#qr-name').textContent = c.name || 'Wizytówka'; $('#qr-big').innerHTML = qrSvg(url); $('#qr-url').textContent = url;
     $('#qr-modal').showModal();
-  } catch (e) { toast('Za dużo danych na kod QR'); }
+  } catch (e) { toast('Za dużo danych na kod QR – połącz się z bazą (krótki link)'); }
 }
 $$('[data-qr-open]').forEach(b => b.onclick = () => showQr(currentId));
 $('#qr-close').onclick = () => $('#qr-modal').close();

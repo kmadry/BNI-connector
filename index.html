@@ -64,7 +64,7 @@
       <select id="ct-sort" aria-label="Sortowanie"><option value="name">Sortuj: nazwisko</option><option value="company">Sortuj: firma</option><option value="new">Sortuj: najnowsze</option></select>
     </div>
     <div id="ct-list" class="ct-list" aria-live="polite"></div>
-    <dialog id="ct-dialog"><form method="dialog" id="ct-form" class="ct-form"></form></dialog>
+    <dialog id="ct-dialog" aria-label="Kontakt"><form method="dialog" id="ct-form" class="ct-form"></form></dialog>
   </section>
 
   <!-- SKAN -->
@@ -168,9 +168,9 @@
   </section>
 </main>
 </div>
-<dialog id="palette"><div class="pal"><input id="pal-input" placeholder="Szukaj kontaktów, wizytówek i poleceń…" aria-label="Paleta poleceń"><ul id="pal-list" role="listbox"></ul></div></dialog>
+<dialog id="palette" aria-label="Paleta poleceń"><div class="pal"><input id="pal-input" placeholder="Szukaj kontaktów, wizytówek i poleceń…" aria-label="Paleta poleceń"><ul id="pal-list" role="listbox"></ul></div></dialog>
 
-<dialog id="qr-modal">
+<dialog id="qr-modal" aria-labelledby="qr-name">
   <div class="qrbox">
     <h2 id="qr-name"></h2>
     <div id="qr-big"></div>
@@ -182,7 +182,7 @@
     </div>
   </div>
 </dialog>
-<div id="toast"></div>
+<div id="toast" role="status" aria-live="polite"></div>
 <script src="config.js"></script>
 <script src="qrcode.js"></script>
 <script src="scan.js"></script>
