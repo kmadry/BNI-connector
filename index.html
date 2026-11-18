@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BNI Connector – rozszerzone wizytówki</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <h1>BNI<span>Connector</span></h1>
+  <nav id="tabs">
+    <button data-view="cards" class="active">Wizytówki</button>
+    <button data-view="editor">Edytor</button>
+    <button data-view="preview">Podgląd / druk</button>
+    <button data-view="links">Połączenia</button>
+  </nav>
+</header>
+
+<main>
+  <!-- LISTA -->
+  <section id="view-cards" class="view active">
+    <div class="bar">
+      <button class="primary" id="btn-new">+ Nowa wizytówka</button>
+      <button id="btn-demo">Wczytaj przykład</button>
+      <button id="btn-export">Eksport JSON</button>
+      <label class="btn">Import JSON<input type="file" id="file-import" accept=".json,application/json" hidden></label>
+    </div>
+    <div id="card-list" class="grid"></div>
+    <p class="hint">Dane zapisują się lokalnie w przeglądarce. Użyj „Eksport JSON”, aby zrobić kopię.</p>
+  </section>
+
+  <!-- EDYTOR -->
+  <section id="view-editor" class="view">
+    <div id="editor-empty" class="hint">Wybierz lub utwórz wizytówkę na zakładce „Wizytówki”.</div>
+    <div id="editor" hidden>
+      <fieldset>
+        <legend>Dane (awers wizytówki)</legend>
+        <div class="form">
+          <label>Imię i nazwisko <input data-f="name"></label>
+          <label>Grupa BNI <input data-f="group"></label>
+          <label>Miasto <input data-f="city"></label>
+          <label>Firma / branża <input data-f="company"></label>
+          <label>Telefon <input data-f="phone" type="tel"></label>
+          <label>Drugi telefon <input data-f="phone2" type="tel"></label>
+          <label>E-mail <input data-f="email" type="email"></label>
+          <label>Kolor akcentu <input data-f="accent" type="color"></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>8 pytań 1:1 (panel z odpowiedziami)</legend>
+        <div id="qa"></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Lista TOP 20 kontaktów biznesowych (które oferuję)</legend>
+        <div class="tablewrap"><table id="tbl-offered"></table></div>
+        <button id="add-offered">+ Wiersz</button>
+      </fieldset>
+
+      <fieldset>
+        <legend>Lista TOP 20 poszukiwanych kontaktów (których szukam)</legend>
+        <div class="tablewrap"><table id="tbl-sought"></table></div>
+        <button id="add-sought">+ Wiersz</button>
+      </fieldset>
+
+      <div class="bar">
+        <button class="primary" id="btn-to-preview">Podgląd →</button>
+        <button id="btn-dup">Duplikuj</button>
+        <button class="danger" id="btn-del">Usuń wizytówkę</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- PODGLĄD -->
+  <section id="view-preview" class="view">
+    <div class="bar">
+      <select id="preview-card"></select>
+      <button class="primary" id="btn-print">Drukuj / PDF</button>
+      <button id="btn-share">Kopiuj link do udostępnienia</button>
+    </div>
+    <div id="sheet" class="sheet"></div>
+    <p class="hint">Panele są ułożone jeden pod drugim w kolejności składania (zakładki harmonijkowej). Drukuj w skali 100%.</p>
+  </section>
+
+  <!-- POŁĄCZENIA -->
+  <section id="view-links" class="view">
+    <div class="split">
+      <div>
+        <h2>Nowe połączenie</h2>
+        <div class="form">
+          <label>Od <select id="link-from"></select></label>
+          <label>Do <select id="link-to"></select></label>
+          <label class="wide">Notatka (np. „polecił na spotkaniu”) <input id="link-note"></label>
+        </div>
+        <button class="primary" id="btn-link">Połącz</button>
+
+        <h2>Podpowiedzi</h2>
+        <p class="hint">Dopasowanie: czego szuka jedna osoba vs. kogo oferuje / czym zajmuje się druga.</p>
+        <div id="suggestions"></div>
+
+        <h2>Istniejące połączenia</h2>
+        <div id="link-list"></div>
+      </div>
+      <div>
+        <h2>Mapa</h2>
+        <svg id="graph" viewBox="0 0 600 460"></svg>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>
