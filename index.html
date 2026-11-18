@@ -8,7 +8,7 @@
 </head>
 <body>
 <header class="top">
-  <h1>BNI<span>Connector</span></h1>
+  <h1>BNI<span>Connector</span></h1><small id="sync" title="Synchronizacja z bazą"></small>
   <nav id="tabs">
     <button data-view="cards" class="active">Wizytówki</button>
     <button data-view="editor">Edytor</button>
@@ -85,9 +85,6 @@
       <button class="primary" id="btn-print">Drukuj / PDF</button>
       <button id="btn-share">Kopiuj link online</button>
     </div>
-    <div class="bar">
-      <label class="grow">Adres strony dla kodu QR <input id="qr-base" placeholder="https://twoja-domena.vercel.app/"></label>
-    </div>
     <p class="hint" id="qr-info"></p>
     <div id="sheet" class="sheet"></div>
     <p class="hint">Panele są ułożone jeden pod drugim w kolejności składania (zakładki harmonijkowej). Drukuj w skali 100%.</p>
@@ -121,6 +118,7 @@
 </main>
 
 <div id="toast"></div>
+<script src="config.js"></script>
 <script src="qrcode.js"></script>
 <script src="app.js"></script>
 </body>

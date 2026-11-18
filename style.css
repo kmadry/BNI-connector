@@ -84,3 +84,5 @@ h2{font-size:17px;margin:18px 0 8px}
   .sheet{background:none;padding:0;align-items:flex-start}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+
+#sync{color:#bbb;font-size:12px}#sync.ok{color:#7ddc8a}#sync.err{color:#ffb4ab}

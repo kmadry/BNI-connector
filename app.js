@@ -27,8 +27,58 @@ function load() {
   try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.cards)) return { cards: s.cards, links: s.links || [] }; } catch (e) {}
   return { cards: [], links: [] };
 }
-function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} schedulePush(); }
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2200); }
+
+/* ---------- chmura (Supabase REST) ---------- */
+const CFG = window.BNI_CONFIG || {};
+const cloud = !!(CFG.url && CFG.key);
+const H = { apikey: CFG.key, Authorization: 'Bearer ' + CFG.key, 'Content-Type': 'application/json' };
+let remoteCards = new Set(), remoteLinks = new Set(), dirty = false, pushTimer = null, pushing = Promise.resolve();
+function setSync(t, cls) { const el = $('#sync'); if (el) { el.textContent = t; el.className = cls || ''; } }
+async function rest(path, opt = {}) {
+  const r = await fetch(CFG.url + '/rest/v1/' + path, Object.assign({ headers: H }, opt));
+  if (!r.ok) throw new Error(path + ' ' + r.status);
+  return r.status === 204 ? null : r.json().catch(() => null);
+}
+async function pull() {
+  if (!cloud) return false;
+  try {
+    const [cs, ls] = await Promise.all([rest('bni_cards?select=id,data'), rest('bni_links?select=id,from_id,to_id,note')]);
+    const remote = { cards: cs.map(r => r.data), links: ls.map(l => ({ id: l.id, from: l.from_id, to: l.to_id, note: l.note })) };
+    remoteCards = new Set(cs.map(r => r.id)); remoteLinks = new Set(ls.map(l => l.id));
+    if (!localStorage.getItem('bni-synced')) { // pierwsze uruchomienie: dołącz lokalne wizytówki
+      state.cards.forEach(c => { if (!remoteCards.has(c.id)) remote.cards.push(c); });
+      state.links.forEach(l => { if (!remoteLinks.has(l.id)) remote.links.push(l); });
+      try { localStorage.setItem('bni-synced', '1'); } catch (_) {}
+      state = remote; dirty = true; await push();
+    } else state = remote;
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (_) {}
+    if (!getCard(currentId)) currentId = state.cards[0]?.id || null;
+    setSync('☁ synchronizacja OK', 'ok'); return true;
+  } catch (e) { setSync('☁ offline (dane lokalne)', 'err'); return false; }
+}
+function schedulePush() { if (!cloud) return; dirty = true; clearTimeout(pushTimer); pushTimer = setTimeout(push, 700); }
+function push() {
+  if (!cloud || !dirty) return pushing;
+  dirty = false; clearTimeout(pushTimer);
+  const snap = JSON.parse(JSON.stringify(state));
+  pushing = pushing.then(async () => {
+    try {
+      const up = { method: 'POST', headers: Object.assign({}, H, { Prefer: 'resolution=merge-duplicates,return=minimal' }) };
+      const ids = new Set(snap.cards.map(c => c.id)), lids = new Set(snap.links.map(l => l.id));
+      const delL = [...remoteLinks].filter(i => !lids.has(i)), delC = [...remoteCards].filter(i => !ids.has(i));
+      if (delL.length) await rest('bni_links?id=in.(' + delL.map(encodeURIComponent).join(',') + ')', { method: 'DELETE' });
+      if (delC.length) await rest('bni_cards?id=in.(' + delC.map(encodeURIComponent).join(',') + ')', { method: 'DELETE' });
+      if (snap.cards.length) await rest('bni_cards?on_conflict=id', Object.assign({ body: JSON.stringify(snap.cards.map(c => ({ id: c.id, data: c, updated_at: new Date().toISOString() }))) }, up));
+      const ok = snap.links.filter(l => ids.has(l.from) && ids.has(l.to));
+      if (ok.length) await rest('bni_links?on_conflict=id', Object.assign({ body: JSON.stringify(ok.map(l => ({ id: l.id, from_id: l.from, to_id: l.to, note: l.note || '' }))) }, up));
+      remoteCards = ids; remoteLinks = new Set(ok.map(l => l.id));
+      setSync('☁ zapisano', 'ok');
+    } catch (e) { dirty = true; setSync('☁ błąd zapisu', 'err'); }
+  });
+  return pushing;
+}
 
 function newCard(over = {}) {
   return Object.assign({
@@ -167,11 +217,9 @@ async function unpack(tok) {
 }
 const bytesB64 = u => btoa(String.fromCharCode(...u)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const b64Bytes = t => Uint8Array.from(atob(t.replace(/-/g, '+').replace(/_/g, '/')), ch => ch.charCodeAt(0));
-function baseUrl() {
-  let b = ($('#qr-base').value || '').trim() || localStorage.getItem('bni-qr-base') || (location.protocol.startsWith('http') ? location.origin + location.pathname : '');
-  return b.split('#')[0];
-}
+function baseUrl() { return location.href.split('#')[0]; }
 async function onlineUrl(c) {
+  if (cloud) { dirty = true; await push(); if (remoteCards.has(c.id)) return baseUrl() + '#c=' + encodeURIComponent(c.id); }
   const slim = { id: c.id, name: c.name, group: c.group, city: c.city, company: c.company, phone: c.phone, phone2: c.phone2, email: c.email, accent: c.accent,
     qa: c.qa, offered: filled(c.offered), sought: filled(c.sought) };
   return baseUrl() + '#card=' + await pack(JSON.stringify(slim));
@@ -186,7 +234,7 @@ async function fillQr(c) {
   try {
     const url = await onlineUrl(c);
     box.innerHTML = qrSvg(url) + '<div>Wizytówka online</div>';
-    info.textContent = baseUrl() ? `Kod QR otwiera: ${baseUrl()} (dane wizytówki zapisane w linku, ${url.length} znaków).` : 'Podaj adres strony powyżej (np. po wdrożeniu), żeby kod QR działał poza tym urządzeniem.';
+    info.textContent = `Kod QR otwiera: ${url}`;
   } catch (e) {
     box.innerHTML = '<div>QR: za dużo danych</div>';
     info.textContent = 'Za dużo treści na kod QR — skróć wpisy lub użyj wersji z bazą danych (krótki link).';
@@ -202,14 +250,12 @@ function renderPreview() {
   const c = getCard($('#preview-card').value) || cur();
   const sheet = $('#sheet'), layout = $('#preview-layout').value, qr = $('#opt-qr').checked;
   sheet.className = 'sheet ' + layout;
-  if (!$('#qr-base').value) $('#qr-base').value = localStorage.getItem('bni-qr-base') || '';
   if (!c) { sheet.innerHTML = '<p class="hint" style="color:#fff">Brak wizytówek.</p>'; return; }
   const inner = cardHTML(c, qr);
   sheet.innerHTML = layout === 'a4' ? `<div class="paper-label">Strona A4 — linie przerywane to linie cięcia/składania</div><div class="paper">${inner}</div>` : inner;
   fillQr(c); fitSheet();
 }
 ['preview-layout', 'opt-qr'].forEach(id => $('#' + id).addEventListener('change', renderPreview));
-$('#qr-base').addEventListener('change', e => { try { localStorage.setItem('bni-qr-base', e.target.value.trim()); } catch (_) {} renderPreview(); });
 window.addEventListener('resize', fitSheet);
 $('#preview-card').onchange = e => { currentId = e.target.value; renderPreview(); };
 $('#btn-print').onclick = () => window.print();
@@ -285,6 +331,8 @@ $('#file-import').onchange = async e => {
 
 /* ---------- link udostępniony (#card=...) ---------- */
 async function importFromHash() {
+  const cm = location.hash.match(/^#c=(.+)$/);
+  if (cm) { const id = decodeURIComponent(cm[1]); if (getCard(id)) { currentId = id; show('preview'); } else toast('Nie znaleziono wizytówki'); return; }
   const m = location.hash.match(/^#card=(.+)$/); if (!m) return;
   try {
     const tok = m[1];
@@ -296,6 +344,6 @@ async function importFromHash() {
 }
 
 renderList();
-importFromHash();
+pull().then(() => { renderList(); return importFromHash(); });
 if (typeof module !== 'undefined') module.exports = { suggestions };
 })();
