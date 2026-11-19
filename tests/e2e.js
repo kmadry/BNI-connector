@@ -219,7 +219,23 @@ process.on('exit', () => {});
   await mx.close();
 
   // logowanie, rejestracja (walidacja), reset hasła, wylogowanie
-  const lx = await b.rawContext({ viewport: { width: 1000, height: 800 } }); const lp = await lx.newPage(); lp.on('pageerror', e => errs.push('logowanie: ' + e.message)); lp.on('dialog', d => d.accept());
+  // tryb gościa: pierwsza wizyta bez konta trafia od razu na prostą wizytówkę
+  const gsx = await b.rawContext({ viewport: { width: 1000, height: 800 } }); const gpg = await gsx.newPage(); gpg.on('pageerror', e => errs.push('gość: ' + e.message));
+  await gpg.goto(base); await gpg.waitForSelector('#view-welcome.active', { timeout: 15000 });
+  ok('gość: pierwsza wizyta bez logowania pokazuje tworzenie prostej wizytówki', (await gpg.locator('#view-login.active').count()) === 0 && (await gpg.locator('#wl-start').isVisible()));
+  await gpg.click('#wl-start'); await gpg.fill('#wl-name', 'Gość Testowy'); await gpg.click('#wl-next'); await gpg.waitForSelector('#view-cards.active #mine .mine-card');
+  ok('gość: wizytówka powstaje i zapisuje się w przeglądarce (localStorage)', await gpg.evaluate(() => Object.keys(localStorage).some(k => /^bni-connector-v3:/.test(k) && /Gość Testowy/.test(localStorage.getItem(k)))));
+  await gpg.waitForSelector('#mine-qr svg', { timeout: 10000 });
+  ok('gość: kod QR działa bez konta', (await gpg.locator('#mine-qr svg').count()) === 1);
+  await gpg.evaluate(() => window.BNI.show('contacts')); await gpg.waitForTimeout(300);
+  ok('gość: Kontakty wymagają konta (bramka z przyciskiem założenia konta)', (await gpg.locator('#view-gate.active').count()) === 1 && (await gpg.locator('#gate-up').isVisible()));
+  await gpg.click('#gate-up'); await gpg.waitForSelector('#account-dialog[open]');
+  ok('gość: okno konta oferuje e-mail i hasło (bez wylogowania)', (await gpg.locator('#ac-up').isVisible()) && !(await gpg.locator('#ac-logout').isVisible()));
+  await gpg.fill('#ac-upmail', 'zly'); await gpg.fill('#ac-uppass', 'krotkie'); await gpg.click('#ac-up button[type=submit]');
+  ok('gość: założenie konta waliduje e-mail i hasło', /poprawny adres/.test(await gpg.textContent('#ac-upmsg')));
+  await gsx.close();
+
+  const lx = await b.rawContext({ viewport: { width: 1000, height: 800 } }); await lx.addInitScript(() => { try { localStorage.setItem('bni-returning', '1'); } catch (e) {} }); const lp = await lx.newPage(); lp.on('pageerror', e => errs.push('logowanie: ' + e.message)); lp.on('dialog', d => d.accept());
   await lp.goto(base); await lp.waitForSelector('#view-login.active', { timeout: 10000 });
   ok('logowanie: niezalogowany widzi tylko ekran logowania (bez menu)', !(await lp.locator('.rail').isVisible()) && (await lp.locator('#au-form').isVisible()));
   await lp.fill('#au-email', CR.a.email); await lp.fill('#au-pass', 'zle-haslo-123456'); await lp.click('#au-go'); await lp.waitForSelector('.au-msg.err', { timeout: 10000 });

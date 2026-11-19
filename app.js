@@ -42,6 +42,8 @@ function toast(msg) { const sn = document.getElementById('snack'); if (sn) sn.cl
 const CFG = window.BNI_CONFIG || {};
 const cloud = !!(CFG.url && CFG.key);
 const authHeaders = () => ({ apikey: CFG.key, Authorization: 'Bearer ' + ((window.BNIAuth && window.BNIAuth.token()) || CFG.key), 'Content-Type': 'application/json' });
+const syncOn = () => !!(cloud && window.BNIAuth && window.BNIAuth.token());
+const isGuest = () => !!(window.BNIAuth && window.BNIAuth.isGuest());
 const myUid = () => { const u = window.BNIAuth && window.BNIAuth.user(); return u ? u.id : 'anon'; };
 let guardHit = false, remoteContacts = new Set(), remoteCards = new Set(), remoteLinks = new Set(), dirty = false, pushTimer = null, pushing = Promise.resolve();
 function setSync(t, cls) { const el = $('#sync'); if (el) { el.textContent = t; el.className = cls || ''; } }
@@ -58,7 +60,7 @@ async function rpc(name, args) {
   return r.json();
 }
 async function pull(retry = 2) {
-  if (!cloud) return false;
+  if (!syncOn()) { setSync('zapisane na tym urządzeniu', ''); return false; }
   try {
     if (dirty) await push();
     const rev0 = rev;
@@ -75,9 +77,9 @@ async function pull(retry = 2) {
   } catch (e) { setSync('offline (dane lokalne)', 'err'); return false; }
 }
 window.addEventListener('online', () => { if (dirty) push(); });
-function schedulePush() { if (!cloud) return; dirty = true; clearTimeout(pushTimer); pushTimer = setTimeout(push, 700); }
+function schedulePush() { if (!syncOn()) return; dirty = true; clearTimeout(pushTimer); pushTimer = setTimeout(push, 700); }
 function push() {
-  if (!cloud || !dirty) return pushing;
+  if (!syncOn() || !dirty) return pushing;
   dirty = false; clearTimeout(pushTimer);
   const snap = JSON.parse(JSON.stringify(state));
   pushing = pushing.then(async () => {
@@ -120,7 +122,7 @@ function teardown(reason) {
   KEY = 'bni-connector-v3:anon'; if (window.BNIPwa) window.BNIPwa.clearQr();
 }
 async function wipeMyData() {
-  try { for (const t of ['bni_links', 'bni_cards', 'bni_contacts', 'bni_settings']) await rest(t + '?id=not.is.null', { method: 'DELETE' }); } catch (e) { toast('Nie udało się usunąć danych. Spróbuj ponownie.'); return; }
+  try { if (syncOn()) for (const t of ['bni_links', 'bni_cards', 'bni_contacts', 'bni_settings']) await rest(t + '?id=not.is.null', { method: 'DELETE' }); } catch (e) { toast('Nie udało się usunąć danych. Spróbuj ponownie.'); return; }
   state = { cards: [], links: [], contacts: [], settings: {} }; currentId = null; remoteCards = new Set(); remoteLinks = new Set(); remoteContacts = new Set(); dirty = false;
   try { localStorage.setItem(KEY, JSON.stringify(state)); localStorage.removeItem(MINE_KEY); } catch (e) {}
   if (window.BNIPwa) window.BNIPwa.clearQr(); renderList(); show('cards'); toast('Usunięto wszystkie Twoje dane');
@@ -158,7 +160,9 @@ const getCard = id => state.cards.find(c => c.id === id);
 const cur = () => getCard(currentId);
 
 /* ---------- widoki ---------- */
+const GATED = { contacts: 'Kontakty', links: 'Połączenia', scan: 'Skanowanie wizytówek' };
 function show(view) {
+  if (isGuest() && GATED[view]) { $('#gate-title').textContent = GATED[view] + ': dostępne po założeniu konta'; view = 'gate'; }
   $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
   document.body.classList.toggle('welcome', view === 'welcome');
   document.body.classList.toggle('auth', view === 'login');
@@ -199,7 +203,7 @@ $('#card-list').addEventListener('click', e => {
 });
 const filled = rows => rows.filter(r => Object.values(r).some(v => String(v || '').trim()));
 
-$('#btn-new').onclick = () => { const c = newCard(); state.cards.push(c); save(); openEditor(c.id, 1); };
+$('#btn-new').onclick = () => { if (isGuest() && state.cards.length >= 1) { show('gate'); $('#gate-title').textContent = 'Kolejne wizytówki są dostępne po założeniu konta'; return; } const c = newCard(); state.cards.push(c); save(); openEditor(c.id, 1); };
 $('#btn-demo').onclick = async () => {
   try {
     const d = await (await fetch('demo.json')).json(), map = {};
@@ -429,7 +433,7 @@ const b64Bytes = t => Uint8Array.from(atob(t.replace(/-/g, '+').replace(/_/g, '/
 function baseUrl() { return (CFG.publicUrl || location.href).split('#')[0]; }
 async function onlineUrl(c) {
   if (!c.shared) throw new Error('private');
-  if (cloud) { if (!remoteCards.has(c.id)) dirty = true; await push(); if (remoteCards.has(c.id)) return baseUrl() + '#c=' + encodeURIComponent(c.id); }
+  if (syncOn()) { if (!remoteCards.has(c.id)) dirty = true; await push(); if (remoteCards.has(c.id)) return baseUrl() + '#c=' + encodeURIComponent(c.id); }
   const slim = { id: c.id, name: c.name, group: c.group, city: c.city, company: c.company, phone: c.phone, phone2: c.phone2, email: c.email, accent: c.accent,
     qa: c.qa, offered: filled(c.offered), sought: filled(c.sought) };
   return baseUrl() + '#card=' + await pack(JSON.stringify(slim));
@@ -556,7 +560,7 @@ $('#btn-export').onclick = () => {
   a.download = 'bni-connector.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 };
 $('#file-import').onchange = async e => {
-  const f = e.target.files[0]; if (!f) return;
+  const f = e.target.files[0]; if (!f) return; if (isGuest()) { e.target.value = ''; show('gate'); $('#gate-title').textContent = 'Import kopii jest dostępny po założeniu konta'; return; }
   try {
     const d = JSON.parse(await f.text());
     const cards = Array.isArray(d.cards) ? d.cards : d.id ? [d] : null; if (!cards) throw 0;
@@ -583,14 +587,37 @@ async function importFromHash() {
 }
 
 window.BNI = { wipeMyData, idOf: name => (state.cards.find(c => c.name === name) || {}).id, getUser: () => window.BNIAuth && window.BNIAuth.user(), openEditor, getMine, getStep: () => step, setStep, revealRow: (k, i) => { shown[k] = Math.max(shown[k], i + 1); }, getLogo, setLogo, sanitizeLogo, logoHTML, renderPreview: () => renderPreview(), get state() { return state; }, setCurrent: id => { currentId = id; }, save, toast, uid, esc, $, $$, cur, getCard, show, renderTable, renderEditor, OFFERED_COLS, SOUGHT_COLS, MAX_ROWS, cloud: () => cloud };
+document.addEventListener('click', e => {
+  if (e.target.closest('#gate-up')) { if (window.BNIAuth) window.BNIAuth.openAccount(); }
+  else if (e.target.closest('#gate-back')) show('cards');
+  else if (e.target.closest('#btn-account') && window.BNIAuth) window.BNIAuth.openAccount();
+});
+// Dane z trybu bez konta przenosimy na nowe konto (nowe id, prywatne), żeby nic nie zginęło
+function adoptGuest(uid) {
+  let moved = 0;
+  for (const gid of new Set([localStorage.getItem('bni-guest-uid'), 'local'])) {
+    if (!gid || gid === uid) continue;
+    try {
+      const raw = localStorage.getItem('bni-connector-v3:' + gid); if (!raw) continue;
+      const g = JSON.parse(raw), map = {}, gm = localStorage.getItem('bni-my-card:' + gid);
+      for (const c0 of g.cards || []) { const c = normCard(c0); map[c0.id] = c.id = uid(); c.shared = false; delete c.showLists; state.cards.push(c); moved++; if (gm === c0.id && !getMineId()) setMineId(c.id); }
+      for (const l of g.links || []) if (map[l.from] && map[l.to]) state.links.push({ id: uid(), from: map[l.from], to: map[l.to], note: l.note || '' });
+      if (localStorage.getItem('bni-onboarded:' + gid)) localStorage.setItem(ONB_KEY, '1');
+      ['bni-connector-v3:', 'bni-my-card:', 'bni-onboarded:'].forEach(p => localStorage.removeItem(p + gid));
+    } catch (err) {}
+  }
+  try { localStorage.removeItem('bni-guest-uid'); } catch (err) {}
+  if (moved) { save(); toast('Przeniesiono Twoją wizytówkę na konto. Udostępnij ją ponownie, aby mieć kod QR.'); }
+}
 async function enterApp() {
+  const ba = $('#btn-account span'); if (ba) ba.textContent = isGuest() ? 'Załóż konto' : 'Konto';
   renderList(); let onb = true; try { onb = !!localStorage.getItem(ONB_KEY); } catch (e) {}
   show(onb ? 'cards' : 'welcome');
   await pull(); renderList(); if (window.BNIContacts) window.BNIContacts.onData(); await importFromHash();
 }
 if (/^#(c|card)=/.test(location.hash) && window.BNIViewer) window.BNIViewer.run({ rest, rpc, unpack, normCard, okId, sanitizeLogo, logoHTML });
 else if (window.BNIAuth) window.BNIAuth.start({
-  onSession: sess => { bootUser(sess.user.id); enterApp(); },
+  onSession: sess => { bootUser(sess.user.id); if (!sess.user.anon) adoptGuest(sess.user.id); enterApp(); },
   onSignedOut: reason => { teardown(reason); show('login'); window.BNIAuth.showLoginScreen(); },
   showLogin: () => show('login')
 });

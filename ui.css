@@ -529,3 +529,9 @@ body.auth .rail{display:none}body.auth .app{display:block}body.auth main{padding
 .qs-name{margin:0;font:700 clamp(24px,5vw,34px)/1.15 'IBM Plex Serif',Georgia,serif}.qs-hint{margin:0;color:#444;font-size:16px}
 body.qr-screen-on{overflow:hidden}
 @media print{#qr-screen{display:none}}
+
+/* bramka: funkcje wymagające konta */
+.gate{max-width:34rem;margin:12vh auto 0;padding:0 16px}
+.gate h2{font:700 1.5rem/1.25 var(--serif,Georgia,serif);margin:0 0 .5rem}
+.gate p{color:var(--muted,#6b665c);margin:0 0 1.25rem}
+.gate-act{display:flex;flex-wrap:wrap;gap:.75rem}

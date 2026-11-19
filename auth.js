@@ -11,7 +11,10 @@ const redirect = () => encodeURIComponent(location.origin + location.pathname);
 
 function loadSess() { try { const s = JSON.parse(localStorage.getItem(SK)); if (s && s.access_token && s.refresh_token && s.user && s.user.id) sess = s; } catch (e) {} }
 function saveSess() { try { if (sess) localStorage.setItem(SK, JSON.stringify(sess)); else localStorage.removeItem(SK); } catch (e) {} }
-function setSess(r) { sess = { access_token: r.access_token, refresh_token: r.refresh_token, expires_at: r.expires_at || now() + (r.expires_in || 3600), user: { id: r.user.id, email: r.user.email } }; saveSess(); }
+function setSess(r) { sess = { access_token: r.access_token, refresh_token: r.refresh_token, expires_at: r.expires_at || now() + (r.expires_in || 3600), user: { id: r.user.id, email: r.user.email || '', anon: !!r.user.is_anonymous } }; saveSess(); }
+const RET = 'bni-returning';
+function markReturning() { try { localStorage.setItem(RET, '1'); } catch (e) {} }
+const isGuest = () => !sess || !!sess.user.anon;
 
 const PL = [
   [/invalid login credentials/i, 'Nieprawidłowy e-mail lub hasło.'],
@@ -49,12 +52,26 @@ const token = () => (sess ? sess.access_token : null);
 const user = () => (sess ? sess.user : null);
 
 /* ---- akcje ---- */
-async function login(email, password) { const j = await api('token?grant_type=password', { email, password }); setSess(j); return j; }
-async function signup(email, password) { const j = await api('signup?redirect_to=' + redirect(), { email, password }); if (j && j.access_token) { setSess(j); return { session: true }; } return { session: false }; }
+async function login(email, password) { const j = await api('token?grant_type=password', { email, password }); setSess(j); markReturning(); return j; }
+async function signup(email, password) { const j = await api('signup?redirect_to=' + redirect(), { email, password }); markReturning(); if (j && j.access_token) { setSess(j); return { session: true }; } return { session: false }; }
 async function magic(email) { try { await api('otp?redirect_to=' + redirect(), { email, create_user: false }); } catch (e) { if (!/signups? not allowed|user not found/i.test(String(e.message))) throw e; } }
 async function recover(email) { await api('recover?redirect_to=' + redirect(), { email }); }
 async function updatePassword(password) { await ensure(); return api('user', { password }, { method: 'PUT', token: token() }); }
-async function logout(all) { const t = token(); clear(); try { if (t) await api('logout' + (all ? '?scope=global' : ''), null, { token: t }); } catch (e) {} if (cb.onSignedOut) cb.onSignedOut('logout'); }
+async function logout(all) { const t = token(); markReturning(); clear(); try { if (t) await api('logout' + (all ? '?scope=global' : ''), null, { token: t }); } catch (e) {} if (cb.onSignedOut) cb.onSignedOut('logout'); }
+
+/* ---- tryb gościa: prosta wizytówka bez rejestracji ----
+   Najpierw próbujemy anonimowego konta technicznego w Supabase (dane od razu trafiają do bazy i można je potem
+   „podnieść” do pełnego konta). Gdy anonimowe logowanie jest wyłączone lub nie ma sieci, działamy lokalnie. */
+async function guestStart() {
+  try { const j = await api('signup', {}); if (j && j.access_token) { setSess(j); try { localStorage.setItem('bni-guest-uid', sess.user.id); } catch (e) {} if (cb.onSession) cb.onSession(sess); return; } } catch (e) {}
+  if (cb.onSession) cb.onSession({ user: { id: 'local', email: '', anon: true, local: true } });
+}
+// Zamiana gościa w pełne konto: e-mail + hasło + potwierdzenie linkiem z wiadomości
+async function upgrade(email, password) {
+  markReturning();
+  if (sess && sess.user.anon) { await ensure(); await api('user?redirect_to=' + redirect(), { email, password }, { method: 'PUT', token: token() }); return; }
+  await signup(email, password);
+}
 
 /* ---- link z e-maila (potwierdzenie, magic link, reset hasła) ---- */
 async function consumeHash() {
@@ -85,13 +102,13 @@ function render() {
       ${mode === 'newpass' ? `<label>Powtórz hasło <input id="au-pass2" type="password" autocomplete="new-password" required></label>` : ''}
       ${m}
       <div class="wl-actions"><button class="primary" id="au-go">${{ login: 'Zaloguj', signup: 'Załóż konto', recover: 'Wyślij link', magic: 'Wyślij link', newpass: 'Zapisz hasło' }[mode]}</button></div></form>
-      <div class="au-links">${mode === 'login' ? '<button type="button" class="back" data-au="signup">Nie masz konta? Załóż konto</button><button type="button" class="back" data-au="recover">Nie pamiętam hasła</button><button type="button" class="back" data-au="magic">Zaloguj linkiem z e-maila</button>' : mode !== 'newpass' ? '<button type="button" class="back" data-au="login">← Wróć do logowania</button>' : ''}</div>`;
+      <div class="au-links">${mode === 'login' ? '<button type="button" class="back" data-au="signup">Nie masz konta? Załóż konto</button><button type="button" class="back" data-au="recover">Nie pamiętam hasła</button><button type="button" class="back" data-au="magic">Zaloguj linkiem z e-maila</button><button type="button" class="back" data-au="guest">Utwórz prostą wizytówkę bez konta</button>' : mode !== 'newpass' ? '<button type="button" class="back" data-au="login">← Wróć do logowania</button>' : ''}</div>`;
   }
   v.innerHTML = `<div class="welcome"><div class="wl-panel"><svg class="wl-mark" viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="36" height="36"/><text x="20" y="29" text-anchor="middle">R</text></svg><h1>${head[0]}</h1>${head[1] ? `<p class="step-help">${esc(head[1])}</p>` : ''}${body}</div></div>`;
   const first = v.querySelector('input'); if (first && mode !== 'sent') first.focus();
 }
 function go(m, message) { mode = m; msg = message || null; render(); }
-document.addEventListener('click', e => { const b = e.target.closest('[data-au]'); if (b && $('#view-login')) go(b.dataset.au); });
+document.addEventListener('click', e => { const b = e.target.closest('[data-au]'); if (!b || !$('#view-login')) return; if (b.dataset.au === 'guest') { try { localStorage.removeItem(RET); } catch (er) {} guestStart(); return; } go(b.dataset.au); });
 document.addEventListener('submit', async e => {
   if (e.target.id !== 'au-form') return; e.preventDefault();
   const email = ($('#au-email') ? $('#au-email').value : '').trim(), pw = $('#au-pass') ? $('#au-pass').value : '', btn = $('#au-go');
@@ -117,19 +134,32 @@ dlg.innerHTML = `<div class="cf-body"><h2 id="ac-title">Konto i prywatność</h2
   <section class="cf-group"><h3>Twoje dane</h3>
     <p class="hint">Wizytówki, kontakty i połączenia widzisz tylko Ty. Publicznie widać wyłącznie wizytówkę, którą sam udostępnisz kodem QR.</p>
     <div class="cf-actions" style="justify-content:flex-start"><button type="button" id="ac-export">Pobierz moje dane</button><button type="button" class="danger" id="ac-wipe">Usuń wszystkie moje dane</button></div></section>
-  <section class="cf-group"><h3>Hasło</h3><form id="ac-pw" novalidate><label>Nowe hasło (min. 10 znaków) <input id="ac-pass" type="password" autocomplete="new-password" minlength="10"></label><p class="au-msg" id="ac-pwmsg" role="status"></p><button type="submit">Zmień hasło</button></form></section>
-  <div class="cf-actions"><button type="button" id="ac-logout">Wyloguj</button><button type="button" id="ac-logout-all">Wyloguj ze wszystkich urządzeń</button><button type="button" class="primary" id="ac-close">Zamknij</button></div></div>`;
+  <section class="cf-group" id="ac-guest" hidden><h3>Załóż konto</h3>
+    <p class="hint">Teraz masz prostą wizytówkę bez konta. Dodaj e-mail i hasło, a odblokujesz kontakty, połączenia i skanowanie. Potwierdź adres kliknięciem w link z wiadomości. Twoja wizytówka zostaje.</p>
+    <form id="ac-up" novalidate><label>E-mail <input id="ac-upmail" type="email" autocomplete="email"></label><label>Hasło (min. 10 znaków) <input id="ac-uppass" type="password" autocomplete="new-password" minlength="10"></label><p class="au-msg" id="ac-upmsg" role="status"></p><button type="submit" class="primary">Załóż konto</button></form></section>
+  <section class="cf-group" id="ac-pwbox"><h3>Hasło</h3><form id="ac-pw" novalidate><label>Nowe hasło (min. 10 znaków) <input id="ac-pass" type="password" autocomplete="new-password" minlength="10"></label><p class="au-msg" id="ac-pwmsg" role="status"></p><button type="submit">Zmień hasło</button></form></section>
+  <div class="cf-actions"><button type="button" id="ac-logout">Wyloguj</button><button type="button" id="ac-logout-all">Wyloguj ze wszystkich urządzeń</button><button type="button" id="ac-signin" hidden>Mam już konto: zaloguj</button><button type="button" class="primary" id="ac-close">Zamknij</button></div></div>`;
 document.body.appendChild(dlg);
-function openAccount() { $('#ac-mail').textContent = sess ? sess.user.email : ''; $('#ac-pwmsg').textContent = ''; $('#ac-pass').value = ''; dlg.showModal(); }
+function openAccount() {
+  const g = isGuest(); $('#ac-guest').hidden = !g; $('#ac-pwbox').hidden = g; $('#ac-logout').hidden = g; $('#ac-logout-all').hidden = g; $('#ac-signin').hidden = !g; $('#ac-upmsg').textContent = '';
+  $('#ac-mail').textContent = g ? 'Prosta wizytówka bez konta' : sess.user.email; $('#ac-pwmsg').textContent = ''; $('#ac-pass').value = ''; dlg.showModal(); }
 dlg.addEventListener('click', async e => {
   const id = e.target.id;
   if (id === 'ac-close' || e.target === dlg) dlg.close();
   else if (id === 'ac-logout') { dlg.close(); await logout(false); }
+  else if (id === 'ac-signin') { dlg.close(); try { localStorage.setItem(RET, '1'); } catch (er) {} if (cb.onSignedOut) cb.onSignedOut('signin'); }
   else if (id === 'ac-logout-all') { if (confirm('Wylogować ze wszystkich urządzeń?')) { dlg.close(); await logout(true); } }
   else if (id === 'ac-export') { const b = document.getElementById('btn-export'); if (b) b.click(); }
   else if (id === 'ac-wipe') { if (confirm('Usunąć WSZYSTKIE Twoje wizytówki, kontakty i połączenia? Tego nie da się cofnąć.') && window.BNI && window.BNI.wipeMyData) { await window.BNI.wipeMyData(); dlg.close(); } }
 });
 dlg.addEventListener('submit', async e => {
+  if (e.target.id === 'ac-up') {
+    e.preventDefault(); const em = $('#ac-upmail').value.trim(), p = $('#ac-uppass').value, out = $('#ac-upmsg');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { out.textContent = 'Podaj poprawny adres e-mail.'; return; }
+    if (p.length < 10) { out.textContent = 'Hasło musi mieć co najmniej 10 znaków.'; return; }
+    try { await upgrade(em, p); out.textContent = 'Wysłaliśmy wiadomość na ' + em + '. Kliknij w link, aby potwierdzić adres. Do tego czasu możesz dalej korzystać z wizytówki.'; $('#ac-uppass').value = ''; } catch (err) { out.textContent = human(err); }
+    return;
+  }
   if (e.target.id !== 'ac-pw') return; e.preventDefault(); const p = $('#ac-pass').value, out = $('#ac-pwmsg');
   if (p.length < 10) { out.textContent = 'Hasło musi mieć co najmniej 10 znaków.'; return; }
   try { await updatePassword(p); out.textContent = 'Hasło zmienione.'; $('#ac-pass').value = ''; } catch (err) { out.textContent = human(err); }
@@ -141,7 +171,9 @@ async function start(callbacks) {
   const r = await consumeHash();
   if (r && r.type === 'recovery' && sess) { mode = 'newpass'; render(); if (cb.showLogin) cb.showLogin(); return; }
   if (sess) { await ensure(); if (sess && cb.onSession) { cb.onSession(sess); return; } }
+  let ret = false; try { ret = !!localStorage.getItem(RET); } catch (e) {}
+  if (!ret) { await guestStart(); return; } // pierwsza wizyta: od razu prosta wizytówka, bez logowania
   mode = 'login'; render(); if (cb.showLogin) cb.showLogin();
 }
-window.BNIAuth = { start, token, user, ensure, refresh, logout, openAccount, login, human, go, session: () => sess, _setCb: c => { cb = c; }, showLoginScreen: () => { mode = 'login'; render(); } };
+window.BNIAuth = { isGuest, guestStart, upgrade, start, token, user, ensure, refresh, logout, openAccount, login, human, go, session: () => sess, _setCb: c => { cb = c; }, showLoginScreen: () => { mode = 'login'; render(); } };
 })();
