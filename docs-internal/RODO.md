@@ -30,7 +30,8 @@ Wniosek: ryzyko niskie do średniego; pełna DPIA nie jest wymagana, ale ocenę 
 
 ## 4. Zadania dla administratora przed uruchomieniem
 - [ ] Uzupełnić dane administratora, datę i region w `prywatnosc.html` i `regulamin.html`.
-- [ ] Ustawić w Supabase region UE; zawrzeć lub zaakceptować DPA z Supabase, Vercel i dostawcą e-mail (SCC / DPF).
+- [x] Region Supabase: eu-central-1 (Frankfurt).
+- [ ] Zawrzeć lub zaakceptować DPA z Supabase, Vercel i dostawcą e-mail (SCC / DPF).
 - [ ] Dodać w Vercelu zmienną `SUPABASE_SERVICE_ROLE_KEY` (tylko jako zmienna środowiskowa, nigdy w kodzie), aby działało usuwanie konta.
 - [ ] Włączyć w Supabase: logowanie anonimowe, CAPTCHA, ochronę przed wyciekłymi hasłami, min. długość hasła 10, Site URL i Redirect URLs.
 - [ ] Włączyć pg_cron (Database → Extensions) i potwierdzić, że `purge_stale_guests` jest zaplanowana.
