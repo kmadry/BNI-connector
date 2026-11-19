@@ -219,6 +219,20 @@ process.on('exit', () => {});
   await mx.close();
 
   // logowanie, rejestracja (walidacja), reset hasła, wylogowanie
+  // OCR z własnych plików (bez CDN) pod ścisłym CSP
+  const ocx = await b.rawContext({ viewport: { width: 800, height: 600 } }); const ocp = await ocx.newPage(); const ext = []; const cspErr = [];
+  ocp.on('request', r => { const u = r.url(); if (!/^(http:\/\/localhost|data:|blob:)/.test(u) && !/supabase\.co/.test(u)) ext.push(u); }); ocp.on('console', m => { if (/Content Security Policy/i.test(m.text())) cspErr.push(m.text().slice(0, 140)); });
+  await ocp.goto(base); await ocp.waitForTimeout(500);
+  const ocrText = await ocp.evaluate(async () => {
+    await new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'ocr/tesseract.min.js'; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+    const c = document.createElement('canvas'); c.width = 900; c.height = 160; const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, 900, 160); g.fillStyle = '#000'; g.font = '48px sans-serif'; g.fillText('Jan Przykładowy', 30, 60); g.fillText('jan@example.com', 30, 130);
+    const O = new URL('ocr/', location.href).href, w = await window.Tesseract.createWorker('pol+eng', 1, { workerPath: O + 'worker.min.js', corePath: O, langPath: O + 'lang' });
+    const r = await w.recognize(c); await w.terminate(); return r.data.text;
+  }).catch(e => 'BŁĄD ' + e);
+  ok('OCR: rozpoznaje tekst z lokalnych plików', /Przyk/i.test(ocrText) && /example\.com/i.test(ocrText), JSON.stringify(ocrText).slice(0, 80));
+  ok('OCR: żadnych zapytań do zewnętrznych serwerów i brak naruszeń CSP', ext.length === 0 && cspErr.length === 0, ext.concat(cspErr).join(' | '));
+  await ocx.close();
+
   // tryb gościa: pierwsza wizyta bez konta trafia od razu na prostą wizytówkę
   const gsx = await b.rawContext({ viewport: { width: 1000, height: 800 } }); const gpg = await gsx.newPage(); gpg.on('pageerror', e => errs.push('gość: ' + e.message));
   await gpg.goto(base); await gpg.waitForSelector('#view-welcome.active', { timeout: 15000 });

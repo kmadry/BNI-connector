@@ -4,7 +4,9 @@
 (function () {
   'use strict';
 
-  var TESSERACT_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+  // OCR hostowany u nas (katalog ocr/): żadne dane ani adresy IP nie trafiają do zewnętrznych CDN
+  var OCR_BASE = (typeof location !== 'undefined') ? new URL('ocr/', location.href).href : 'ocr/';
+  var TESSERACT_URL = OCR_BASE + 'tesseract.min.js';
   var MAX_SIDE = 1800;
 
   /* ------------------------------------------------------------------ */
@@ -567,7 +569,7 @@
   function getWorker() {
     if (tessWorker) return tessWorker;
     tessWorker = loadTesseract().then(function (T) {
-      return T.createWorker('pol+eng', 1, { logger: function (m) { if (tessLogger) tessLogger(m); } });
+      return T.createWorker('pol+eng', 1, { workerPath: OCR_BASE + 'worker.min.js', corePath: OCR_BASE, langPath: OCR_BASE + 'lang', logger: function (m) { if (tessLogger) tessLogger(m); } });
     }).catch(function (e) { tessWorker = null; throw e; });
     return tessWorker;
   }
