@@ -1,0 +1,7 @@
+{
+  "name": "referra",
+  "private": true,
+  "version": "1.0.0",
+  "engines": { "node": ">=20" },
+  "dependencies": { "passkit-generator": "3.7.0" }
+}

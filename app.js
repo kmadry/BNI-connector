@@ -222,6 +222,19 @@ function fitMine() {
   if (w && pw) p.style.zoom = String(Math.min(1.35, w / pw));
 }
 window.addEventListener('resize', fitMine);
+function walletBtns(c) {
+  const ua = navigator.userAgent, ios = /iPhone|iPad|iPod/.test(ua), and = /Android/.test(ua), k = [];
+  if (!and) k.push(['apple', 'Dodaj do Portfela Apple']); if (!ios) k.push(['google', 'Dodaj do Google Wallet']);
+  return k.map(([x, t]) => `<button data-wallet="${x}" data-id="${esc(c.id)}">${t}</button>`).join('');
+}
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-wallet]'); if (!b) return; b.disabled = true;
+  try {
+    const r = await fetch('api/wallet', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + ((window.BNIAuth && window.BNIAuth.token()) || '') }, body: JSON.stringify({ id: b.dataset.id, kind: b.dataset.wallet }) });
+    const j = await r.json(); if (!r.ok || !j.url) throw new Error(j.error || 'Nie udało się.'); location.href = j.url;
+  } catch (err) { toast(err.message === 'Failed to fetch' ? 'Brak internetu. Spróbuj ponownie.' : err.message); }
+  b.disabled = false;
+});
 function renderMine() {
   const box = $('#mine'), c = getMine();
   if (!c) {
@@ -230,7 +243,7 @@ function renderMine() {
   }
   const share = c.shared
     ? `<div class="mine-qr" id="mine-qr" aria-label="Kod QR Twojej wizytówki"></div><p class="mine-cap">Zeskanuj, aby zobaczyć moją wizytówkę i zapisać kontakt.</p>
-       <div class="mine-act"><button class="primary" data-qr-id="${esc(c.id)}">Pokaż kod QR na pełnym ekranie</button><button id="mine-share">Udostępnij link</button><button class="back" data-edit-mine>Edytuj wizytówkę</button></div>`
+       <div class="mine-act"><button class="primary" data-qr-id="${esc(c.id)}">Pokaż kod QR na pełnym ekranie</button><button id="mine-share">Udostępnij link</button>${walletBtns(c)}<button class="back" data-edit-mine>Edytuj wizytówkę</button></div>`
     : `<div class="mine-private"><p class="mine-cap"><b>Ta wizytówka jest prywatna.</b> Nikt poza Tobą jej nie widzi. Udostępnij ją, aby pokazywać kod QR.</p>
        <div class="mine-act"><button class="primary" id="mine-enable" data-qr-id="${esc(c.id)}">Udostępnij kodem QR</button><button class="back" data-edit-mine>Edytuj wizytówkę</button></div></div>`;
   box.innerHTML = `<section class="mine" aria-label="Twoja wizytówka"><div class="mine-card" style="--acc:${esc(c.accent || '#e8473f')}">${coverHTML(c, false)}</div><div class="mine-share">${share}</div></section>`;
