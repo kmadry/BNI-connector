@@ -346,3 +346,53 @@ h2{margin-top:44px}
 @media (max-width:1000px){.editor-grid{gap:28px}}
 @media (max-width:820px){main{padding-top:64px}.sect>summary{font-size:22px;padding:24px 0}.more-pop{right:auto;left:0}}
 .tray .tc .tc-add{font:500 22px/1 var(--mono);min-width:44px;min-height:44px;padding:0;justify-content:center}
+
+
+/* =====================================================================
+   Prowadzenie: kroki zamiast długiego formularza
+   ===================================================================== */
+.back{border:0;background:none;box-shadow:none;padding:0;min-height:44px;margin:0 0 14px -2px;font:600 15px var(--sans);color:var(--muted);text-decoration:none}
+.back:hover{background:none;color:var(--accent);text-decoration:underline}
+.stepper{margin:0 0 40px}
+.step-count{margin:0 0 12px;font:600 15px var(--sans);color:var(--muted)}
+.step-count span{color:var(--text)}
+.step-bar{height:4px;background:var(--line)}
+.step-bar span{display:block;height:100%;background:var(--accent)}
+.step-h{margin:0 0 8px;font:700 clamp(28px,4vw,38px)/1.1 var(--serif);letter-spacing:-.02em}
+.step-help{margin:0 0 36px;color:var(--muted);font-size:17px;max-width:52ch}
+.step[hidden]{display:none}
+.step-nav{display:flex;gap:12px;margin-top:48px;padding-top:28px;border-top:1px solid var(--rule)}
+.step-nav .primary{margin-left:auto;min-width:140px;justify-content:center}
+.more-fields{margin-top:28px}
+.more-fields>summary{cursor:pointer;font:600 15px var(--sans);color:var(--muted);padding:8px 0;list-style:none}
+.more-fields>summary::-webkit-details-marker{display:none}
+.more-fields>summary::before{content:"+ ";font-family:var(--mono)}
+.more-fields[open]>summary::before{content:"\2212 "}
+.more-fields .form{margin-top:20px}
+.qa-q{display:block;font:700 18px/1.35 var(--sans);color:var(--text);margin-bottom:8px}
+.qa-item{margin-bottom:36px}
+.qa-item textarea{min-height:96px;border:0;border-bottom:1px solid var(--rule);background:transparent;padding:6px 0;font-size:17px;line-height:1.6}
+.more-fields label{display:flex;flex-direction:column;gap:6px;margin-top:16px;font:600 13px var(--sans);color:var(--muted)}
+.more-fields label input{border:0;border-bottom:1px solid var(--rule);background:transparent;padding-left:0}
+.rows-more{display:flex;gap:12px;margin:4px 0 24px}
+.done-list{border-top:1px solid var(--rule);margin:0 0 40px}
+.done-row{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px 0;border-bottom:1px solid var(--line)}
+.done-row div{display:flex;flex-direction:column}
+.done-row b{font:700 17px var(--sans)}.done-row span{color:var(--muted);font-size:15px}
+.done-actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.editor-grid:has(#ct-tray[hidden]){grid-template-columns:minmax(0,760px)}
+.tray-for{margin:14px 0 4px;font:500 15px var(--sans);color:var(--muted)}.tray-for b{color:var(--text)}
+
+/* start: jedna sugestia */
+.next{display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap;padding:32px 32px 32px 36px;margin:0 0 48px;background:var(--surface);border:1px solid var(--rule);border-left:10px solid var(--accent)}
+.next-k{font:600 13px var(--sans);color:var(--muted)}
+.next p{margin:6px 0 4px;font:700 clamp(22px,3vw,30px)/1.2 var(--serif);letter-spacing:-.015em}
+.next small{color:var(--muted);font-size:15px}
+.next .primary{min-width:170px;justify-content:center}
+
+@media (max-width:820px){
+  .step-nav{position:sticky;bottom:calc(60px + env(safe-area-inset-bottom));background:var(--bg);margin-top:36px;padding:14px 0;z-index:5}
+  .next{padding:24px 22px 24px 26px}.next .primary{width:100%}
+  #tabs button{font-size:12px}
+}
+.step-count span{display:none}

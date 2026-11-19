@@ -42,3 +42,7 @@ body.viewer-mode .app,body.viewer-mode dialog,body.viewer-mode #toast,body.viewe
 .v-fold>summary::-webkit-details-marker{display:none}
 .v-fold>summary::after{content:"+";font:400 26px var(--mono)}.v-fold[open]>summary::after{content:"\2212"}
 .v-sec{margin-top:52px}.v-list li{padding:16px 0}
+
+/* spokojniej: plakietki zwykłym pismem, bez powtarzania skali firmy w każdym wierszu */
+.v-badge,.v-chip{font:500 12px var(--sans);text-transform:none;letter-spacing:0}
+.v-tags .v-chip{display:none}

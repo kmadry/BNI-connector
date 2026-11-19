@@ -132,7 +132,8 @@ const cur = () => getCard(currentId);
 /* ---------- widoki ---------- */
 function show(view) {
   $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
-  $$('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  const NAV = { editor: 'cards', preview: 'cards', scan: 'contacts' };
+  $$('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.view === (NAV[view] || view)));
   if (view === 'cards') renderList();
   if (view === 'editor') renderEditor();
   if (view === 'preview') renderPreview();
@@ -145,6 +146,7 @@ $('#tabs').addEventListener('click', e => { const b = e.target.closest('button')
 
 /* ---------- lista ---------- */
 function renderList() {
+  renderNext();
   const el = $('#card-list');
   if (!state.cards.length) { el.innerHTML = '<div class="empty" style="grid-column:1/-1"><h3>Nie masz jeszcze wizytówek</h3><p>Utwórz pierwszą albo wczytaj przykładowe dane.</p></div>'; return; }
   el.innerHTML = state.cards.map(c => {
@@ -155,15 +157,15 @@ function renderList() {
     </div>`;
   }).join('');
 }
-$('#card-list').addEventListener('keydown', e => { const t = e.target.closest('.tile'); if (t && e.key === 'Enter') { currentId = t.dataset.id; show('editor'); } });
+$('#card-list').addEventListener('keydown', e => { const t = e.target.closest('.tile'); if (t && e.key === 'Enter') openEditor(t.dataset.id); });
 $('#card-list').addEventListener('click', e => {
   const q = e.target.closest('[data-qr-id]'); if (q) return showQr(q.dataset.qrId);
   const t = e.target.closest('.tile'); if (!t) return;
-  currentId = t.dataset.id; show('editor');
+  openEditor(t.dataset.id);
 });
 const filled = rows => rows.filter(r => Object.values(r).some(v => String(v || '').trim()));
 
-$('#btn-new').onclick = () => { const c = newCard(); state.cards.push(c); currentId = c.id; save(); show('editor'); };
+$('#btn-new').onclick = () => { const c = newCard(); state.cards.push(c); save(); openEditor(c.id, 1); };
 $('#btn-demo').onclick = async () => {
   try {
     const d = await (await fetch('demo.json')).json();
@@ -174,19 +176,58 @@ $('#btn-demo').onclick = async () => {
 };
 
 /* ---------- edytor ---------- */
+/* ---------- prowadzony edytor (kroki) ---------- */
+const STEP_TITLES = ['Kim jesteś', 'Jak pracujesz', 'Kogo polecasz', 'Kogo szukasz', 'Gotowe'];
+const ROWS_STEP = 5;
+let step = 1, shownFor = null;
+const shown = { offered: ROWS_STEP, sought: ROWS_STEP };
+function nextStepFor(c) {
+  if (!String(c.name || '').trim()) return { step: 1, label: 'Uzupełnij dane na wizytówce' };
+  if (c.qa.filter(x => String(x.a || '').trim()).length < 3) return { step: 2, label: 'Odpowiedz na kilka pytań' };
+  if (filled(c.offered).length < 3) return { step: 3, label: 'Dodaj osoby, które polecasz' };
+  if (filled(c.sought).length < 3) return { step: 4, label: 'Napisz, kogo szukasz' };
+  return { step: 5, label: 'Wydrukuj lub udostępnij wizytówkę' };
+}
+function openEditor(id, n) { currentId = id; const c = getCard(id); step = n || (c ? nextStepFor(c).step : 1); show('editor'); }
+function setStep(n) { step = Math.max(1, Math.min(5, n)); applyStep(); }
+function applyStep() {
+  $$('#editor .step').forEach(el => { el.hidden = +el.dataset.step !== step; });
+  const pct = Math.round((step - 1) / 4 * 100);
+  $('#stepper').innerHTML = `<p class="step-count">Krok ${step} z 5 <span>· ${STEP_TITLES[step - 1]}</span></p><div class="step-bar" role="progressbar" aria-valuemin="1" aria-valuemax="5" aria-valuenow="${step}"><span style="width:${pct}%"></span></div>`;
+  $('#step-back').hidden = step === 1; $('#step-next').hidden = step === 5;
+  if (step === 5) renderDone();
+  document.dispatchEvent(new Event('bni-step'));
+}
+function renderDone() {
+  const c = cur(); if (!c) return;
+  const answered = c.qa.filter(x => String(x.a || '').trim()).length;
+  const rows = [[1, 'Dane na wizytówce', c.name ? esc(c.name) : 'Brak imienia'], [2, 'Pytania', answered + ' z 8 odpowiedzi'], [3, 'Polecam', filled(c.offered).length + ' osób'], [4, 'Szukam', filled(c.sought).length + ' osób']];
+  $('#done-list').innerHTML = rows.map(([n, t, v]) => `<div class="done-row"><div><b>${t}</b><span>${v}</span></div><button class="small" data-step-go="${n}">Zmień</button></div>`).join('');
+}
+function renderNext() {
+  const box = $('#next-step'), c = getCard(currentId) || state.cards[0];
+  $('#btn-new').classList.toggle('primary', !state.cards.length);
+  if (!c) { box.innerHTML = ''; return; }
+  const n = nextStepFor(c);
+  box.innerHTML = `<div class="next"><div><span class="next-k">Następny krok</span><p>${esc(n.label)}</p><small>${esc(c.name || 'Bez nazwy')}</small></div><button class="primary" id="next-go" data-card="${esc(c.id)}">${n.step === 5 ? 'Otwórz' : 'Kontynuuj'}</button></div>`;
+}
 function renderEditor() {
   const c = cur();
   $('#editor-empty').hidden = !!c; $('#editor').hidden = !c;
   if (!c) return;
+  if (shownFor !== c.id) { shown.offered = ROWS_STEP; shown.sought = ROWS_STEP; shownFor = c.id; }
   $$('[data-f]').forEach(i => i.value = c[i.dataset.f] || (i.dataset.f === 'accent' ? '#e8473f' : ''));
-  $('#qa').innerHTML = c.qa.map((x, i) => `<div class="qa-item"><input data-qi="${i}" data-k="q" value="${esc(x.q)}"><textarea data-qi="${i}" data-k="a">${esc(x.a)}</textarea></div>`).join('');
+  $('#qa').innerHTML = c.qa.map((x, i) => `<div class="qa-item"><label class="qa-q" for="qa-a-${i}">${esc(x.q)}</label><textarea id="qa-a-${i}" data-qi="${i}" data-k="a">${esc(x.a)}</textarea></div>`).join('') +
+    `<details class="more-fields"><summary>Zmień treść pytań</summary>${c.qa.map((x, i) => `<label>Pytanie ${i + 1}<input data-qi="${i}" data-k="q" value="${esc(x.q)}"></label>`).join('')}</details>`;
   renderTable('offered', OFFERED_COLS); renderTable('sought', SOUGHT_COLS);
+  applyStep();
 }
 function renderTable(key, cols) {
-  const c = cur(), rows = c[key];
+  const c = cur(), rows = c[key], limit = Math.min(rows.length, Math.max(shown[key], 1));
   $('#tbl-' + key).className = 'edit';
   $('#tbl-' + key).innerHTML = `<tr><th>#</th>${cols.map(x => `<th>${x[1]}</th>`).join('')}<th></th></tr>` +
-    rows.map((r, i) => `<tr data-drop="${key}" data-i="${i}"><td class="grip" data-grip tabindex="0" role="button" title="Przeciągnij (Alt+↑/↓ z klawiatury)" aria-label="Przenieś wiersz ${i + 1} (Alt+strzałka)">⋮⋮ ${i + 1}</td>${cols.map(([k]) => `<td><input data-t="${key}" data-i="${i}" data-k="${k}" value="${esc(r[k] || '')}"></td>`).join('')}<td><button class="small" data-del="${key}" data-i="${i}" aria-label="Usuń wiersz ${i + 1}">✕</button></td></tr>`).join('');
+    rows.slice(0, limit).map((r, i) => `<tr data-drop="${key}" data-i="${i}"><td class="grip" data-grip tabindex="0" role="button" title="Przeciągnij (Alt+↑/↓ z klawiatury)" aria-label="Przenieś wiersz ${i + 1} (Alt+strzałka)">⋮⋮ ${i + 1}</td>${cols.map(([k]) => `<td><input data-t="${key}" data-i="${i}" data-k="${k}" value="${esc(r[k] || '')}"></td>`).join('')}<td><button class="small" data-del="${key}" data-i="${i}" aria-label="Usuń wiersz ${i + 1}">✕</button></td></tr>`).join('');
+  $('#rows-' + key).innerHTML = (rows.length > limit ? `<button class="small" data-rows-more="${key}">Pokaż kolejne (jeszcze ${rows.length - limit})</button>` : '') + (limit > ROWS_STEP && rows.length <= limit ? `<button class="small" data-rows-less="${key}">Pokaż mniej</button>` : '');
   $('#add-' + key).disabled = rows.length >= MAX_ROWS;
 }
 $('#editor').addEventListener('input', e => {
@@ -202,9 +243,18 @@ $('#editor').addEventListener('click', e => {
   save(); renderTable(key, key === 'offered' ? OFFERED_COLS : SOUGHT_COLS);
 });
 ['offered', 'sought'].forEach(k => $('#add-' + k).onclick = () => {
-  const c = cur(); if (c[k].length >= MAX_ROWS) return; c[k].push({}); save(); renderTable(k, k === 'offered' ? OFFERED_COLS : SOUGHT_COLS);
+  const c = cur(); if (c[k].length >= MAX_ROWS) return; c[k].push({}); shown[k] = Math.max(shown[k], c[k].length); save(); renderTable(k, k === 'offered' ? OFFERED_COLS : SOUGHT_COLS);
 });
 $('#btn-to-preview').onclick = () => show('preview');
+$('#step-next').onclick = () => { setStep(step + 1); window.scrollTo(0, 0); };
+$('#step-back').onclick = () => { setStep(step - 1); window.scrollTo(0, 0); };
+document.addEventListener('click', e => {
+  const bk = e.target.closest('[data-back]'); if (bk) return show(bk.dataset.back);
+  const go = e.target.closest('[data-step-go]'); if (go) { setStep(+go.dataset.stepGo); return window.scrollTo(0, 0); }
+  const nx = e.target.closest('#next-go'); if (nx) return openEditor(nx.dataset.card);
+  const mr = e.target.closest('[data-rows-more]'); if (mr) { const k = mr.dataset.rowsMore; shown[k] += ROWS_STEP; return renderTable(k, k === 'offered' ? OFFERED_COLS : SOUGHT_COLS); }
+  const ml = e.target.closest('[data-rows-less]'); if (ml) { const k = ml.dataset.rowsLess; shown[k] = ROWS_STEP; return renderTable(k, k === 'offered' ? OFFERED_COLS : SOUGHT_COLS); }
+});
 $('#btn-dup').onclick = () => { const c = JSON.parse(JSON.stringify(cur())); c.id = uid(); c.name += ' (kopia)'; state.cards.push(c); currentId = c.id; save(); renderEditor(); toast('Zduplikowano'); };
 $('#btn-del').onclick = () => {
   if (!confirm('Usunąć tę wizytówkę wraz z jej połączeniami?')) return;
@@ -404,7 +454,7 @@ async function importFromHash() {
 }
 
 renderList();
-window.BNI = { getLogo, setLogo, sanitizeLogo, logoHTML, renderPreview: () => renderPreview(), get state() { return state; }, setCurrent: id => { currentId = id; }, save, toast, uid, esc, $, $$, cur, getCard, show, renderTable, renderEditor, OFFERED_COLS, SOUGHT_COLS, MAX_ROWS, cloud: () => cloud };
+window.BNI = { getStep: () => step, setStep, revealRow: (k, i) => { shown[k] = Math.max(shown[k], i + 1); }, getLogo, setLogo, sanitizeLogo, logoHTML, renderPreview: () => renderPreview(), get state() { return state; }, setCurrent: id => { currentId = id; }, save, toast, uid, esc, $, $$, cur, getCard, show, renderTable, renderEditor, OFFERED_COLS, SOUGHT_COLS, MAX_ROWS, cloud: () => cloud };
 if (/^#(c|card)=/.test(location.hash) && window.BNIViewer) window.BNIViewer.run({ rest, unpack, normCard, okId, sanitizeLogo, logoHTML });
 else pull().then(() => { renderList(); if (window.BNIContacts) window.BNIContacts.onData(); return importFromHash(); });
 if (typeof module !== 'undefined') module.exports = { suggestions };

@@ -22,12 +22,9 @@
 <aside class="rail">
   <div class="brand"><div class="brand-row"><svg class="logo-mark" viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="36" height="36"/><text x="20" y="29" text-anchor="middle">R</text></svg><span class="brand-word">Referra</span></div><span class="brand-name">Wizytówki · polecenia</span></div>
   <nav id="tabs" aria-label="Główna nawigacja">
-    <button data-view="cards" class="active"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h6M7 14h4"/></svg><span>Wizytówki</span></button>
-    <button data-view="contacts"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14a5 5 0 0 1 4.5 5"/></svg><span>Kontakty</span></button>
-    <button data-view="scan"><svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16"/></svg><span>Skan</span></button>
-    <button data-view="editor"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg><span>Edytor</span></button>
-    <button data-view="preview"><svg viewBox="0 0 24 24"><path d="M7 9V4h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="7" y="14" width="10" height="6"/></svg><span>Druk</span></button>
-    <button data-view="links"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 11l7.6-4M8.2 13l7.6 4"/></svg><span>Sieć</span></button>
+    <button data-view="cards" class="active"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h6M7 14h4"/></svg><span>Moje wizytówki</span></button>
+    <button data-view="contacts"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14a5 5 0 0 1 4.5 5"/></svg><span>Ludzie</span></button>
+    <button data-view="links"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 11l7.6-4M8.2 13l7.6 4"/></svg><span>Połączenia</span></button>
   </nav>
   <div class="rail-foot">
     <button id="btn-palette" class="ghost" title="Szukaj i polecenia (Ctrl/⌘ + K)"><span>Szukaj…</span><kbd>⌘K</kbd></button>
@@ -39,7 +36,7 @@
 <main>
   <!-- LISTA -->
   <section id="view-cards" class="view active">
-    <header class="page-head"><div><h1>Wizytówki</h1><p class="sub">Twoje rozszerzone, składane wizytówki z listami TOP 20.</p></div>
+    <header class="page-head"><div><h1>Moje wizytówki</h1><p class="sub">Tu tworzysz i drukujesz swoje wizytówki.</p></div>
       <div class="actions">
         <button class="primary" id="btn-new">+ Nowa wizytówka</button>
         <details class="more"><summary class="btn">Więcej</summary><div class="more-pop">
@@ -51,12 +48,13 @@
         </div></details>
       </div>
     </header>
+    <div id="next-step"></div>
     <div id="card-list" class="grid"></div>
   </section>
 
   <!-- KONTAKTY -->
   <section id="view-contacts" class="view">
-    <header class="page-head"><div><h1>Magazyn kontaktów</h1><p class="sub" id="ct-count"></p></div>
+    <header class="page-head"><div><h1>Ludzie</h1><p class="sub" id="ct-count"></p></div>
       <div class="actions">
         <button class="primary" id="ct-new">+ Nowy kontakt</button>
         <button id="ct-scan">Zeskanuj wizytówkę</button>
@@ -81,48 +79,76 @@
 
   <!-- SKAN -->
   <section id="view-scan" class="view">
-    <header class="page-head"><div><h1>Skanowanie wizytówek</h1><p class="sub">Zdjęcie lub plik vCard → zweryfikowany kontakt w magazynie.</p></div></header>
+    <header class="page-head"><div><button class="back" data-back="contacts">← Ludzie</button><h1>Skanowanie wizytówek</h1><p class="sub">Zrób zdjęcie wizytówki. Sprawdzisz dane, zanim je zapiszesz.</p></div></header>
     <div id="scan-root"></div>
   </section>
 
   <!-- EDYTOR -->
   <section id="view-editor" class="view">
-    <header class="page-head"><div><h1>Edytor wizytówki</h1><p class="sub">Przeciągnij kontakty z magazynu do list TOP 20.</p></div></header>
-    <div id="editor-empty" class="hint">Wybierz lub utwórz wizytówkę na zakładce „Wizytówki”.</div>
+    <header class="page-head"><div><button class="back" data-back="cards">← Moje wizytówki</button><h1>Twoja wizytówka</h1></div></header>
+    <div id="editor-empty" class="hint">Wybierz lub utwórz wizytówkę na liście.</div>
     <div class="editor-grid">
     <div id="editor" hidden>
-      <details class="sect" open><summary>Dane na wizytówce</summary>
+      <div class="stepper" id="stepper" aria-live="polite"></div>
+
+      <section class="step" data-step="1">
+        <h2 class="step-h">Kim jesteś</h2>
+        <p class="step-help">Te dane trafią na okładkę wizytówki.</p>
         <div class="form">
-          <label>Imię i nazwisko <input data-f="name"></label>
-          <label>Grupa / organizacja <input data-f="group"></label>
+          <label>Imię i nazwisko <input data-f="name" autocomplete="name"></label>
+          <label>Telefon <input data-f="phone" type="tel" autocomplete="tel"></label>
+          <label>E-mail <input data-f="email" type="email" autocomplete="email"></label>
           <label>Miasto <input data-f="city"></label>
-          <label>Firma / branża <input data-f="company"></label>
-          <label>Telefon <input data-f="phone" type="tel"></label>
-          <label>Drugi telefon <input data-f="phone2" type="tel"></label>
-          <label>E-mail <input data-f="email" type="email"></label>
-          <label>Kolor akcentu <input data-f="accent" type="color"></label>
         </div>
-      </details>
+        <details class="more-fields"><summary>Więcej danych</summary>
+          <div class="form">
+            <label>Grupa / organizacja <input data-f="group"></label>
+            <label>Firma / branża <input data-f="company"></label>
+            <label>Drugi telefon <input data-f="phone2" type="tel"></label>
+            <label>Kolor akcentu <input data-f="accent" type="color"></label>
+          </div>
+        </details>
+      </section>
 
-      <details class="sect"><summary>8 pytań 1:1</summary>
+      <section class="step" data-step="2" hidden>
+        <h2 class="step-h">Jak pracujesz</h2>
+        <p class="step-help">Odpowiedz krótko. Pytania, na które nie chcesz odpowiadać, możesz pominąć.</p>
         <div id="qa"></div>
-      </details>
+      </section>
 
-      <details class="sect" open><summary>Polecam (lista TOP 20)</summary>
+      <section class="step" data-step="3" hidden>
+        <h2 class="step-h">Kogo polecasz</h2>
+        <p class="step-help">Wpisz osoby albo przeciągnij je z magazynu. Wystarczy kilka.</p>
         <div class="tablewrap"><table id="tbl-offered"></table></div>
-        <button id="add-offered">+ Wiersz</button>
-      </details>
+        <div id="rows-offered" class="rows-more"></div>
+        <button id="add-offered">+ Dodaj osobę</button>
+      </section>
 
-      <details class="sect"><summary>Szukam (lista TOP 20)</summary>
+      <section class="step" data-step="4" hidden>
+        <h2 class="step-h">Kogo szukasz</h2>
+        <p class="step-help">Napisz, kogo szukasz. Dzięki temu inni łatwiej Ci pomogą.</p>
         <div class="tablewrap"><table id="tbl-sought"></table></div>
-        <button id="add-sought">+ Wiersz</button>
-      </details>
+        <div id="rows-sought" class="rows-more"></div>
+        <button id="add-sought">+ Dodaj osobę</button>
+      </section>
 
-      <div class="bar">
-        <button class="primary" id="btn-to-preview">Podgląd →</button>
-        <button data-qr-open>Kod QR</button>
-        <button id="btn-dup">Duplikuj</button>
-        <button class="danger" id="btn-del">Usuń wizytówkę</button>
+      <section class="step" data-step="5" hidden>
+        <h2 class="step-h">Gotowe</h2>
+        <p class="step-help">Wizytówka zapisuje się sama. Możesz ją teraz wydrukować albo udostępnić.</p>
+        <div id="done-list" class="done-list"></div>
+        <div class="done-actions">
+          <button class="primary" id="btn-to-preview">Podgląd i druk</button>
+          <button data-qr-open>Pokaż kod QR</button>
+          <details class="more"><summary class="btn">Więcej</summary><div class="more-pop">
+            <button id="btn-dup">Duplikuj wizytówkę</button>
+            <button class="danger" id="btn-del">Usuń wizytówkę</button>
+          </div></details>
+        </div>
+      </section>
+
+      <div class="step-nav">
+        <button id="step-back" hidden>Wstecz</button>
+        <button class="primary" id="step-next">Dalej</button>
       </div>
     </div>
     <aside id="ct-tray" class="tray" aria-label="Magazyn kontaktów do przeciągania" hidden></aside>
@@ -131,7 +157,7 @@
 
   <!-- PODGLĄD -->
   <section id="view-preview" class="view">
-    <header class="page-head"><div><h1>Podgląd i druk</h1><p class="sub">Dwustronny pasek 90 × 56 mm z kodem QR.</p></div></header>
+    <header class="page-head"><div><button class="back" data-back="editor">← Wróć do edycji</button><h1>Podgląd i druk</h1><p class="sub">Tak wygląda wizytówka po wydrukowaniu.</p></div></header>
     <div class="bar">
       <select id="preview-card" aria-label="Wizytówka"></select>
       <select id="preview-layout" title="Układ wydruku" aria-label="Układ podglądu">

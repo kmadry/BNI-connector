@@ -28,12 +28,14 @@ process.on('exit', () => {});
   // magazyn
   await p.click('#tabs [data-view=contacts]');
   if (await p.locator('.ct-row').count() < 30) { await p.evaluate(() => document.querySelector('#ct-demo').click()); await p.waitForTimeout(800); }
-  const n = await p.locator('.ct-row').count(); ok('magazyn: kontakty widoczne', n >= 30, n + ' kontaktów');
+  const n = parseInt(await p.textContent('#ct-count')); const shownRows = await p.locator('.ct-row').count();
+  ok('magazyn: kontakty w bazie', n >= 30, n + ' kontaktów');
+  ok('magazyn: lista pokazuje tylko 12 naraz + „Pokaż kolejne”', shownRows === 12 && (await p.locator('[data-ct-more]').count()) === 1, shownRows + ' wierszy');
   await p.fill('#ct-search', 'Alfa'); const f = await p.locator('.ct-row').count(); ok('magazyn: wyszukiwanie filtruje', f > 0 && f < n, f + ' wyników');
   await p.fill('#ct-search', ''); await p.screenshot({ path: OUT + '/02-kontakty.png' });
 
   // edytor + przeciąganie
-  await p.click('#tabs [data-view=cards]'); await p.click('.tile >> nth=0'); await p.waitForSelector('#ct-tray .tc');
+  await p.click('#tabs [data-view=cards]'); await p.click('.tile:has-text("Adam Przykładowy")'); await p.evaluate(() => window.BNI.setStep(3)); await p.waitForSelector('#ct-tray .tc');
   ok('tacka widoczna w edytorze', await p.isVisible('#ct-tray'));
   const before = await p.inputValue('#tbl-offered tr[data-i="2"] input[data-k="name"]');
   const names = (await p.locator('#ct-tray .tc-main b').allTextContents()).map(x => x.trim());
@@ -64,26 +66,26 @@ process.on('exit', () => {});
 
   // przycisk +O na świeżej karcie (dostępność bez myszy)
   await p.screenshot({ path: OUT + '/04-edytor.png', fullPage: false });
-  await p.click('#tabs [data-view=cards]'); await p.click('#btn-new'); await p.waitForSelector('#ct-tray .tc');
+  await p.click('#tabs [data-view=cards]'); await p.click('#btn-new'); await p.evaluate(() => window.BNI.setStep(3)); await p.waitForSelector('#ct-tray .tc');
   const first = (await p.locator('#ct-tray .tc-main b').first().textContent()).trim();
   await p.locator('#ct-tray .tc [data-add]').first().click(); await p.waitForTimeout(300);
   ok('przycisk +O dodaje kontakt do TOP 20', (await p.inputValue('#tbl-offered tr[data-i="0"] input[data-k="name"]')) === first, first);
-  await p.locator('#ct-tray .tray-target label', { hasText: 'Szukam' }).click(); await p.locator('#ct-tray .tc [data-add]').nth(1).click(); await p.waitForTimeout(300);
+  await p.evaluate(() => window.BNI.setStep(4)); await p.waitForSelector('#ct-tray .tray-for'); await p.locator('#ct-tray .tc [data-add]').nth(1).click(); await p.waitForTimeout(300);
   ok('przycisk +S dodaje kontakt do poszukiwanych', (await p.inputValue('#tbl-sought tr[data-i="0"] input[data-k="name"]')).length > 0);
-  await p.click('#btn-del'); await p.waitForTimeout(500);
-  await p.click('#tabs [data-view=cards]'); await p.click('.tile >> nth=0'); await p.waitForSelector('#ct-tray .tc');
+  await p.evaluate(() => { window.BNI.setStep(5); document.querySelector('#btn-del').click(); }); await p.waitForTimeout(500);
+  await p.click('#tabs [data-view=cards]'); await p.click('.tile:has-text("Adam Przykładowy")'); await p.evaluate(() => window.BNI.setStep(3)); await p.waitForSelector('#ct-tray .tc');
 
   // paleta
   await p.keyboard.press('Control+k'); await p.fill('#pal-input', 'kontakty'); await p.keyboard.press('Enter'); await p.waitForTimeout(300);
   ok('paleta poleceń otwiera widok', await p.locator('#view-contacts.active').count() === 1);
 
   // skan
-  await p.click('#tabs [data-view=scan]'); await p.waitForTimeout(300);
+  await p.evaluate(() => window.BNI.show('scan')); await p.waitForTimeout(300);
   ok('skan: moduł zamontowany', (await p.locator('#scan-root *').count()) > 5);
   const parsed = await p.evaluate(() => window.BNIScan.parseCardText('Jan Przykładowy\nDyrektor Handlowy\nAlfa Budowa Sp. z o.o.\ntel. +48 600 000 123\njan@example.com\nwww.example.com\nul. Testowa 1, 40-001 Katowice'));
   ok('skan: parser wyciąga e-mail/tel/firmę', /jan@example.com/.test(JSON.stringify(parsed)) && /600 000 123|600000123/.test(JSON.stringify(parsed)) && /Alfa Budowa/.test(JSON.stringify(parsed)), JSON.stringify(parsed).slice(0, 140));
   await p.screenshot({ path: OUT + '/05-skan.png' });
-  await p.click('#tabs [data-view=preview]'); await p.waitForSelector('.qr svg');
+  await p.evaluate(() => window.BNI.show('preview')); await p.waitForSelector('.qr svg');
   ok('okladka: telefon i e-mail czytelne (kolor rozny od tla)', await p.evaluate(() => { const e = document.querySelector('.cover .cv-bot .ct'); const cs = getComputedStyle(e); return cs.color !== cs.backgroundColor && cs.backgroundColor === 'rgba(0, 0, 0, 0)'; }));
  await p.screenshot({ path: OUT + '/06-druk.png' });
   ok('okladka: brak stylow naglowka strony (tlo przezroczyste, nie sticky)', await p.evaluate(() => { const e = document.querySelector('.cover .cv-top'); const cs = getComputedStyle(e); return cs.backgroundColor === 'rgba(0, 0, 0, 0)' && cs.position !== 'sticky'; }));
@@ -101,11 +103,11 @@ process.on('exit', () => {});
   const overflow = await m.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   ok('mobile: brak poziomego przewijania', overflow <= 1, 'nadmiar ' + overflow + 'px');
   await m.screenshot({ path: OUT + '/m1-wizytowki.png' });
-  for (const v of ['cards', 'contacts', 'scan', 'editor', 'preview', 'links']) { await m.click('#tabs [data-view=' + v + ']', { timeout: 5000 }); await m.waitForTimeout(150); if (!(await m.locator('#view-' + v + '.active').count())) ok('mobile: nawigacja ' + v, false); }
-  ok('mobile: wszystkie 6 zakladek nawigacji klikalne', true);
+  for (const v of ['cards', 'contacts', 'links']) { await m.click('#tabs [data-view=' + v + ']', { timeout: 5000 }); await m.waitForTimeout(150); if (!(await m.locator('#view-' + v + '.active').count())) ok('mobile: nawigacja ' + v, false); }
+  ok('mobile: 3 pozycje nawigacji, wszystkie klikalne', (await m.locator('#tabs button').count()) === 3);
   await m.click('#tabs [data-view=contacts]'); await m.waitForTimeout(400); await m.screenshot({ path: OUT + '/m2-kontakty.png' });
   ok('mobile: kontakty bez przewijania poziomego', (await m.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 1);
-  await m.click('#tabs [data-view=cards]'); await m.click('.tile >> nth=0'); await m.waitForTimeout(500); await m.screenshot({ path: OUT + '/m3-edytor.png' });
+  await m.click('#tabs [data-view=cards]'); await m.click('.tile:has-text("Adam Przykładowy")'); await m.waitForTimeout(500); await m.evaluate(() => window.BNI.setStep(3)); await m.waitForTimeout(300); await m.screenshot({ path: OUT + '/m3-edytor.png' });
   ok('mobile: edytor bez przewijania poziomego', (await m.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 1);
 
   // widok publiczny wizytówki (cel kodu QR): tylko wizytówka + polecajki, bez zapisu do bazy
@@ -131,25 +133,48 @@ process.on('exit', () => {});
   await v.goto(base + '#c=nie-ma-takiej'); await v.waitForFunction(() => /Nie znaleziono/.test(document.querySelector('#viewer').textContent), null, { timeout: 8000 }).catch(() => {});
   ok('widok QR: nieistniejąca karta → komunikat', /Nie znaleziono/.test(await v.textContent('#viewer')));
   ok('widok QR: brak błędów JS/CSP', verrs.length === 0, verrs.join(' | '));
+  // prowadzenie: następny krok, prowadzony edytor w 5 krokach, krótkie listy
+  await p.evaluate(() => window.BNI.show('cards')); await p.waitForTimeout(300);
+  ok('nawigacja: 3 pozycje zamiast 6', (await p.locator('#tabs button').count()) === 3);
+  ok('start: jedna sugestia „Następny krok”', (await p.locator('#next-step .next').count()) === 1 && (await p.locator('#next-go').count()) === 1);
+  await p.click('.tile:has-text("Adam Przykładowy")'); await p.evaluate(() => window.BNI.setStep(3)); await p.waitForTimeout(300);
+  const rows5 = await p.locator('#tbl-offered tr[data-i]').count();
+  ok('lista „Polecam”: tylko 5 wierszy naraz', rows5 === 5 && (await p.locator('[data-rows-more=offered]').count()) === 1, rows5 + ' wierszy');
+  await p.click('[data-rows-more=offered]'); await p.waitForTimeout(150);
+  ok('lista „Polecam”: „Pokaż kolejne” dodaje 5', (await p.locator('#tbl-offered tr[data-i]').count()) === 10);
+  await p.evaluate(() => window.BNI.show('cards')); await p.click('#btn-new'); await p.waitForSelector('#stepper .step-count');
+  ok('edytor: „Krok 1 z 5” i jeden przycisk Dalej', /Krok 1 z 5/.test(await p.textContent('#stepper')) && (await p.locator('#step-next').isVisible()) && !(await p.locator('#step-back').isVisible()));
+  const ctl1 = await p.evaluate(() => [...document.querySelectorAll('#editor input,#editor textarea,#editor select,#editor button,#editor summary')].filter(e => e.offsetParent !== null && !(e.tagName !== 'SUMMARY' && e.closest('details:not([open])'))).length);
+  ok('edytor: krok 1 ma ≤ 8 widocznych kontrolek (było 230 w całym edytorze)', ctl1 <= 8, ctl1 + ' kontrolek');
+  await p.fill('[data-f=name]', 'Test Krok'); await p.click('#step-next');
+  ok('edytor: krok 2 (8 pytań, bez edycji treści pytań)', /Krok 2 z 5/.test(await p.textContent('#stepper')) && (await p.locator('#qa textarea:visible').count()) === 8 && (await p.locator('#qa input:visible').count()) === 0);
+  await p.click('#step-next'); await p.click('#step-next'); await p.click('#step-next');
+  ok('edytor: krok 5 „Gotowe”: jedna akcja główna i podsumowanie', /Krok 5 z 5/.test(await p.textContent('#stepper')) && (await p.locator('#btn-to-preview').isVisible()) && (await p.locator('.done-row').count()) === 4);
+  await p.click('#btn-to-preview'); await p.waitForSelector('.cover');
+  ok('podgląd: link „Wróć do edycji”', await p.locator('#view-preview .back').isVisible() && (await p.locator('#tabs button.active').getAttribute('data-view')) === 'cards');
+  await p.click('#view-preview .back'); await p.waitForTimeout(200);
+  ok('powrót do edycji zachowuje krok', /Krok 5 z 5/.test(await p.textContent('#stepper')));
+  await p.evaluate(() => { window.BNI.setStep(5); document.querySelector('#btn-del').click(); }); await p.waitForTimeout(600);
+
   // logo konfigurowalne: domyślnie BNI jak we wzorze, znak Referra, edycja tekstem i obrazem
-  await p.click('#tabs [data-view=preview]'); await p.waitForSelector('.qr svg');
+  await p.evaluate(() => window.BNI.show('preview')); await p.waitForSelector('.qr svg');
   ok('logo: domyślnie BNI na okładce (jak we wzorze)', /BNI/.test(await p.textContent('.cover .logo')));
   ok('logo: mały znak Referra na okładce', /Referra/i.test(await p.textContent('.cover .cv-ref')));
   ok('marka: Referra w menu i tytule', /Referra/.test(await p.textContent('.brand-word')) && /Referra/.test(await p.title()));
   await p.click('#tabs [data-view=cards]'); await p.evaluate(() => document.querySelector('#btn-logo').click()); await p.waitForSelector('#logo-dialog[open]');
   await p.fill('#lg-text', 'ACME'); await p.click('#lg-form button[value=save]'); await p.waitForTimeout(400);
-  await p.click('#tabs [data-view=preview]'); await p.waitForSelector('.cover .logo');
+  await p.evaluate(() => window.BNI.show('preview')); await p.waitForSelector('.cover .logo');
   ok('logo: zmiana tekstu widoczna na okładce', /ACME/.test(await p.textContent('.cover .logo')));
   await p.click('#tabs [data-view=cards]'); await p.evaluate(() => document.querySelector('#btn-logo').click()); await p.waitForSelector('#logo-dialog[open]');
   await p.click('#lg-form .lg-seg button[data-mode=image]');
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
   await p.setInputFiles('#lg-file', { name: 'logo.png', mimeType: 'image/png', buffer: png }); await p.waitForTimeout(300);
-  await p.click('#lg-form button[value=save]'); await p.click('#tabs [data-view=preview]'); await p.waitForSelector('.cover .logo');
+  await p.click('#lg-form button[value=save]'); await p.evaluate(() => window.BNI.show('preview')); await p.waitForSelector('.cover .logo');
   ok('logo: wgrany obraz na okładce', (await p.locator('.cover .logo-img').count()) === 1 && /^data:image\/png/.test(await p.getAttribute('.cover .logo-img', 'src')));
   await p.click('#tabs [data-view=cards]'); await p.evaluate(() => document.querySelector('#btn-logo').click()); await p.waitForSelector('#logo-dialog[open]');
   await p.setInputFiles('#lg-file', { name: 'zly.svg', mimeType: 'image/svg+xml', buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>window.__svg=1</script></svg>') }); await p.waitForTimeout(300);
   ok('logo: SVG ze skryptem odrzucony', (await p.evaluate(() => window.BNI.getLogo().image)).includes('data:image/png') && (await p.evaluate(() => window.__svg)) === undefined);
-  await p.click('#lg-reset'); await p.click('#lg-form button[value=save]'); await p.click('#tabs [data-view=preview]'); await p.waitForSelector('.cover .logo');
+  await p.click('#lg-reset'); await p.click('#lg-form button[value=save]'); await p.evaluate(() => window.BNI.show('preview')); await p.waitForSelector('.cover .logo');
   ok('logo: przywrócenie BNI', /BNI/.test(await p.textContent('.cover .logo')) && (await p.locator('.cover .logo-img').count()) === 0);
   await p.waitForTimeout(1500);
   // XSS przez id (zatruta karta importowana jako JSON)

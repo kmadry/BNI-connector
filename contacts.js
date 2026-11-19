@@ -7,6 +7,7 @@ const { $, $$, esc, toast, uid } = B;
 const REL = ['Znajomy / Klient', 'Znajomy / Partner biznesowy'];
 const SCALE = ['Duża firma', 'Średnia firma', 'Mała firma'];
 const MAX = B.MAX_ROWS;
+let ctLimit = 12, trayLimit = 8;
 const list = () => (B.state.contacts = B.state.contacts || []);
 const fullName = c => [c.firstName, c.lastName].filter(Boolean).join(' ').trim() || c.company || 'Bez nazwy';
 const initials = c => ((c.firstName || '')[0] || '') + ((c.lastName || '')[0] || '') || (c.company || '?')[0];
@@ -54,9 +55,10 @@ function render() {
   const all = list(), r = filtered(), box = $('#ct-list');
   $('#ct-count').textContent = all.length ? `${all.length} kontaktów${r.length !== all.length ? ` · pokazano ${r.length}` : ''}` : 'Brak kontaktów';
   if (!all.length) { box.innerHTML = `<div class="empty"><h3>Magazyn jest pusty</h3><p>Dodaj kontakt ręcznie, zeskanuj wizytówkę albo zaimportuj plik vCard / CSV.</p><div class="actions"><button class="primary" data-act="new">+ Nowy kontakt</button><button data-act="scan">Zeskanuj wizytówkę</button><button data-act="demo">Wczytaj przykładowe</button></div></div>`; return; }
-  box.innerHTML = r.length ? r.map(contactRow).join('') : '<div class="empty"><h3>Brak wyników</h3><p>Zmień filtry lub wyszukiwanie.</p></div>';
+  box.innerHTML = r.length ? r.slice(0, ctLimit).map(contactRow).join('') + (r.length > ctLimit ? `<div class="rows-more"><button data-ct-more>Pokaż kolejne (jeszcze ${r.length - ctLimit})</button></div>` : '') : '<div class="empty"><h3>Brak wyników</h3><p>Zmień filtry lub wyszukiwanie.</p></div>';
 }
 $('#ct-list').addEventListener('click', e => {
+  if (e.target.closest('[data-ct-more]')) { ctLimit += 12; return render(); }
   const act = e.target.closest('[data-act]');
   if (act) return ({ new: () => openForm(), scan: () => B.show('scan'), demo: loadDemo })[act.dataset.act]();
   const row = e.target.closest('.ct-row'); if (!row) return;
@@ -66,7 +68,7 @@ $('#ct-list').addEventListener('click', e => {
   openForm(c);
 });
 $('#ct-list').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('ct-row')) { e.preventDefault(); const c = list().find(x => x.id === e.target.dataset.id); if (c) openForm(c); } });
-['ct-search', 'ct-rel', 'ct-tag', 'ct-sort'].forEach(id => $('#' + id).addEventListener('input', render));
+['ct-search', 'ct-rel', 'ct-tag', 'ct-sort'].forEach(id => $('#' + id).addEventListener('input', () => { ctLimit = 12; render(); }));
 
 /* ---------- formularz kontaktu ---------- */
 const F = [['firstName', 'Imię'], ['lastName', 'Nazwisko'], ['company', 'Firma'], ['title', 'Stanowisko'], ['industry', 'Branża'], ['city', 'Miasto'], ['emails', 'E-maile (po przecinku)'], ['phones', 'Telefony (po przecinku)'], ['website', 'WWW'], ['tags', 'Tagi (po przecinku)']];
@@ -175,7 +177,7 @@ function insertRow(key, row, at) {
   else if (blank(rows[at])) rows[at] = row;
   else if (rows.length < MAX) rows.splice(at, 0, row);
   else { const e = rows.map(blank).lastIndexOf(true); if (e >= 0) { rows.splice(at, 0, row); rows.splice(e >= at ? e + 1 : e, 1); } else { rows[at] = row; verb = 'Zastąpiono wiersz ' + (at + 1); } }
-  B.save(); if (!$('#view-editor').classList.contains('active')) { /* tylko dane */ } else B.renderTable(key, cols(key));
+  B.save(); B.revealRow(key, rows.indexOf(row)); if ($('#view-editor').classList.contains('active')) B.renderTable(key, cols(key));
   snack(`${verb}: ${row.name}`, () => { card[key] = JSON.parse(before); B.save(); if ($('#view-editor').classList.contains('active')) B.renderTable(key, cols(key)); });
   return true;
 }
@@ -189,23 +191,25 @@ function moveRow(key, from, to) {
 
 /* ---------- tacka w edytorze ---------- */
 function renderTray() {
-  const tray = $('#ct-tray'), has = !!B.cur();
+  const tray = $('#ct-tray'); trayTarget = B.getStep() === 4 ? 'sought' : 'offered';
+  const has = !!B.cur() && [3, 4].includes(B.getStep());
   tray.hidden = !has; if (!has) return;
   const q = ($('#tray-q') && $('#tray-q').value || '').toLowerCase();
-  const all = list().filter(c => matches(c, q)), rows = all.slice(0, 80);
+  const all = list().filter(c => matches(c, q)), rows = all.slice(0, trayLimit);
   tray.innerHTML = `<div class="tray-head"><h3>Magazyn kontaktów</h3><small>${list().length}</small></div>
-    <div class="tray-target" role="radiogroup" aria-label="Dodaję do listy">${[['offered', 'Polecam'], ['sought', 'Szukam']].map(([k, l]) => `<label><input type="radio" name="tray-target" value="${k}"${trayTarget === k ? ' checked' : ''}> ${l}</label>`).join('')}</div>
+    <p class="tray-for">Dodajesz do listy: <b>${trayTarget === 'sought' ? 'Szukam' : 'Polecam'}</b></p>
     <input id="tray-q" type="search" placeholder="Szukaj w magazynie…" value="${esc(q)}" aria-label="Szukaj w magazynie">
     <p class="hint hint-drag">Przeciągnij <b>⋮⋮</b> do tabeli albo użyj <b>+</b>.</p><p class="hint hint-tap">Dotknij <b>+</b>, aby dodać do wybranej listy.</p>
-    ${all.length > rows.length ? `<p class="hint">Pokazano ${rows.length} z ${all.length} – zawęź wyszukiwanie.</p>` : ''}
-    <div class="tray-list">${rows.length ? rows.map(c => `<div class="tc" data-id="${esc(c.id)}"><span class="dh" data-drag="${esc(c.id)}" role="button" tabindex="0" aria-label="Przeciągnij ${esc(fullName(c))}" title="Przeciągnij">⋮⋮</span><span class="tc-main"><b>${esc(fullName(c))}</b><small>${esc(c.company || c.industry || '')}</small></span><button class="small tc-add" data-add aria-label="Dodaj ${esc(fullName(c))} do listy" title="Dodaj do wybranej listy">+</button></div>`).join('') : `<div class="empty small"><p>${list().length ? 'Brak wyników.' : 'Magazyn jest pusty.'}</p>${list().length ? '' : '<button class="small primary" data-demo>Wczytaj przykładowe</button> <button class="small" data-goscan>Skanuj</button>'}</div>`}</div>`;
+        <div class="tray-list">${rows.length ? rows.map(c => `<div class="tc" data-id="${esc(c.id)}"><span class="dh" data-drag="${esc(c.id)}" role="button" tabindex="0" aria-label="Przeciągnij ${esc(fullName(c))}" title="Przeciągnij">⋮⋮</span><span class="tc-main"><b>${esc(fullName(c))}</b><small>${esc(c.company || c.industry || '')}</small></span><button class="small tc-add" data-add aria-label="Dodaj ${esc(fullName(c))} do listy" title="Dodaj do wybranej listy">+</button></div>`).join('') : `<div class="empty small"><p>${list().length ? 'Brak wyników.' : 'Magazyn jest pusty.'}</p>${list().length ? '' : '<button class="small primary" data-demo>Wczytaj przykładowe</button> <button class="small" data-goscan>Skanuj</button>'}</div>`}</div>${all.length > rows.length ? `<div class="rows-more"><button class="small" data-tray-more>Pokaż kolejne (jeszcze ${all.length - rows.length})</button></div>` : ''}`;
   const ol = $('#tbl-offered') && $('#tbl-offered').closest('.tablewrap'), sl = $('#tbl-sought') && $('#tbl-sought').closest('.tablewrap');
   if (ol) ol.dataset.zone = 'offered'; if (sl) sl.dataset.zone = 'sought';
 }
 $('#ct-tray').addEventListener('keydown', e => { const h = e.target.closest && e.target.closest('.dh'); if (h && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); const b = h.closest('.tc').querySelector('[data-add]'); if (b) b.focus(); } });
+document.addEventListener('bni-step', () => renderTray());
 $('#ct-tray').addEventListener('change', e => { if (e.target.name === 'tray-target') trayTarget = e.target.value; });
-$('#ct-tray').addEventListener('input', e => { if (e.target.id === 'tray-q') { const p = e.target.selectionStart; renderTray(); const n = $('#tray-q'); n.focus(); n.setSelectionRange(p, p); } });
+$('#ct-tray').addEventListener('input', e => { if (e.target.id === 'tray-q') { trayLimit = 8; const p = e.target.selectionStart; renderTray(); const n = $('#tray-q'); n.focus(); n.setSelectionRange(p, p); } });
 $('#ct-tray').addEventListener('click', e => {
+  if (e.target.closest('[data-tray-more]')) { trayLimit += 8; return renderTray(); }
   if (e.target.closest('[data-demo]')) return loadDemo();
   if (e.target.closest('[data-goscan]')) return B.show('scan');
   const b = e.target.closest('[data-add]'); if (!b) return;
