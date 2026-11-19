@@ -51,7 +51,7 @@ const user = () => (sess ? sess.user : null);
 /* ---- akcje ---- */
 async function login(email, password) { const j = await api('token?grant_type=password', { email, password }); setSess(j); return j; }
 async function signup(email, password) { const j = await api('signup?redirect_to=' + redirect(), { email, password }); if (j && j.access_token) { setSess(j); return { session: true }; } return { session: false }; }
-async function magic(email) { await api('otp?redirect_to=' + redirect(), { email, create_user: false }); }
+async function magic(email) { try { await api('otp?redirect_to=' + redirect(), { email, create_user: false }); } catch (e) { if (!/signups? not allowed|user not found/i.test(String(e.message))) throw e; } }
 async function recover(email) { await api('recover?redirect_to=' + redirect(), { email }); }
 async function updatePassword(password) { await ensure(); return api('user', { password }, { method: 'PUT', token: token() }); }
 async function logout(all) { const t = token(); clear(); try { if (t) await api('logout' + (all ? '?scope=global' : ''), null, { token: t }); } catch (e) {} if (cb.onSignedOut) cb.onSignedOut('logout'); }

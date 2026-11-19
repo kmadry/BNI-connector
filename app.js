@@ -34,7 +34,8 @@ function load() {
   try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.cards)) return { cards: s.cards.map(normCard), links: s.links || [], contacts: s.contacts || [], settings: s.settings || {} }; } catch (e) {}
   return { cards: [], links: [], contacts: [], settings: {} };
 }
-function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} schedulePush(); }
+let rev = 0;
+function save() { rev++; try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} schedulePush(); }
 function toast(msg) { const sn = document.getElementById('snack'); if (sn) sn.classList.remove('show'); const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2200); }
 
 /* ---------- chmura (Supabase REST) ---------- */
@@ -56,11 +57,13 @@ async function rpc(name, args) {
   if (!r.ok) throw new Error('rpc ' + r.status);
   return r.json();
 }
-async function pull() {
+async function pull(retry = 2) {
   if (!cloud) return false;
   try {
     if (dirty) await push();
+    const rev0 = rev;
     let [cs, ls, ks, ss] = await Promise.all([rest('bni_cards?select=id,data,shared'), rest('bni_links?select=id,from_id,to_id,note'), rest('bni_contacts?select=id,data'), rest('bni_settings?select=id,data').catch(() => [])]);
+    if (rev !== rev0) { if (retry > 0) { await push(); return pull(retry - 1); } return false; } // użytkownik zmienił dane w trakcie pobierania — nie nadpisuj
     cs = cs.filter(r => okId(r.id)); ks = ks.filter(r => okId(r.id)); ls = ls.filter(l => okId(l.id) && okId(l.from_id) && okId(l.to_id));
     const remoteSettings = {}; (ss || []).forEach(r => { if (r.id === 'logo:' + myUid()) remoteSettings.logo = sanitizeLogo(r.data); });
     const remote = { settings: remoteSettings, cards: cs.map(r => normCard(Object.assign({}, r.data || {}, { shared: !!r.shared }))), links: ls.map(l => ({ id: l.id, from: l.from_id, to: l.to_id, note: l.note })), contacts: ks.map(r => Object.assign({}, r.data, { id: r.id })) };

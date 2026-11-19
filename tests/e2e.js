@@ -18,8 +18,18 @@ process.on('exit', () => {});
 (async () => {
   const port = srv.address().port, base = `http://localhost:${port}/index.html`;
   const b = await chromium.launch();
-  const _nc = b.newContext.bind(b); b.rawContext = _nc;
-  b.newContext = async o => { const c = await _nc(o); await c.addInitScript(() => { try { localStorage.setItem('bni-onboarded', '1'); } catch (e) {} }); return c; };
+  const AH = require('./auth-helper.js'); const CR = AH.creds(); const SA = await AH.signIn(CR.a), SB = await AH.signIn(CR.b);
+  const _nc = b.newContext.bind(b); b.rawContext = _nc; // bez sesji (niezalogowany)
+  b.authContextAs = async (sess, o, flags) => { const c = await _nc(o); await AH.inject(c, sess, flags || { onboarded: true }); return c; };
+  b.newContext = async o => b.authContextAs(SA, o, { onboarded: true });   // zalogowany A, po onboardingu
+  b.authContext = async (o, flags) => b.authContextAs(SA, o, flags);       // zalogowany A, z własnymi flagami
+  // dane startowe konta A: przykłady, główna wizytówka Adama udostępniona (QR), Jan prywatny
+  const sc = await b.newContext({ viewport: { width: 1000, height: 800 } }); const sp0 = await sc.newPage(); sp0.on('dialog', d => d.accept());
+  await sp0.goto(base); await sp0.waitForFunction(() => document.querySelector('#sync') && /OK|zapisano/.test(document.querySelector('#sync').textContent), null, { timeout: 15000 }).catch(() => {});
+  if (!(await sp0.evaluate(() => window.BNI.idOf('Adam Przykładowy')))) { await sp0.evaluate(() => document.querySelector('#btn-demo').click()); await sp0.waitForTimeout(3500); }
+  await sp0.evaluate(() => { const B = window.BNI; B.getCard(B.idOf('Adam Przykładowy')).shared = true; B.getCard(B.idOf('Adam Przykładowy')).showLists = true; B.getCard(B.idOf('Jan Kowalski')).shared = false; B.save(); });
+  await sp0.waitForTimeout(2500);
+  const ADAM = await sp0.evaluate(() => window.BNI.idOf('Adam Przykładowy')), JAN = await sp0.evaluate(() => window.BNI.idOf('Jan Kowalski')); await sc.close();
   const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
   const p = await ctx.newPage();
   globalThis.errs = []; const errs = globalThis.errs; p.on('pageerror', e => errs.push(e.message)); p.on('console', m => { if (/Content Security Policy|violates/i.test(m.text())) errs.push('CSP: ' + m.text().slice(0, 160)); }); p.on('dialog', d => d.accept());
@@ -37,7 +47,7 @@ process.on('exit', () => {});
   await p.fill('#ct-search', ''); await p.screenshot({ path: OUT + '/02-kontakty.png' });
 
   // edytor + przeciąganie
-  await p.click('#tabs [data-view=cards]'); await p.evaluate(() => window.BNI.openEditor('demo-adam')); await p.evaluate(() => window.BNI.setStep(3)); await p.waitForSelector('#ct-tray .tc');
+  await p.click('#tabs [data-view=cards]'); await p.evaluate(() => window.BNI.openEditor(window.BNI.idOf('Adam Przykładowy'))); await p.evaluate(() => window.BNI.setStep(3)); await p.waitForSelector('#ct-tray .tc');
   ok('tacka widoczna w edytorze', await p.isVisible('#ct-tray'));
   const before = await p.inputValue('#tbl-offered tr[data-i="2"] input[data-k="name"]');
   const names = (await p.locator('#ct-tray .tc-main b').allTextContents()).map(x => x.trim());
@@ -75,7 +85,7 @@ process.on('exit', () => {});
   await p.evaluate(() => window.BNI.setStep(4)); await p.waitForSelector('#ct-tray .tray-for'); await p.locator('#ct-tray .tc [data-add]').nth(1).click(); await p.waitForTimeout(300);
   ok('przycisk +S dodaje kontakt do poszukiwanych', (await p.inputValue('#tbl-sought tr[data-i="0"] input[data-k="name"]')).length > 0);
   await p.evaluate(() => { window.BNI.setStep(5); document.querySelector('#btn-del').click(); }); await p.waitForTimeout(500);
-  await p.click('#tabs [data-view=cards]'); await p.evaluate(() => window.BNI.openEditor('demo-adam')); await p.evaluate(() => window.BNI.setStep(3)); await p.waitForSelector('#ct-tray .tc');
+  await p.click('#tabs [data-view=cards]'); await p.evaluate(() => window.BNI.openEditor(window.BNI.idOf('Adam Przykładowy'))); await p.evaluate(() => window.BNI.setStep(3)); await p.waitForSelector('#ct-tray .tc');
 
   // paleta
   await p.keyboard.press('Control+k'); await p.fill('#pal-input', 'kontakty'); await p.keyboard.press('Enter'); await p.waitForTimeout(300);
@@ -109,29 +119,30 @@ process.on('exit', () => {});
   ok('mobile: 3 pozycje nawigacji, wszystkie klikalne', (await m.locator('#tabs button:visible').count()) === 3);
   await m.click('#tabs [data-view=contacts]'); await m.waitForTimeout(400); await m.screenshot({ path: OUT + '/m2-kontakty.png' });
   ok('mobile: kontakty bez przewijania poziomego', (await m.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 1);
-  await m.click('#tabs [data-view=cards]'); await m.evaluate(() => window.BNI.openEditor('demo-adam')); await m.waitForTimeout(500); await m.evaluate(() => window.BNI.setStep(3)); await m.waitForTimeout(300); await m.screenshot({ path: OUT + '/m3-edytor.png' });
+  await m.click('#tabs [data-view=cards]'); await m.evaluate(() => window.BNI.openEditor(window.BNI.idOf('Adam Przykładowy'))); await m.waitForTimeout(500); await m.evaluate(() => window.BNI.setStep(3)); await m.waitForTimeout(300); await m.screenshot({ path: OUT + '/m3-edytor.png' });
   ok('mobile: edytor bez przewijania poziomego', (await m.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 1);
 
   // zabezpieczenie synchronizacji: niepełny stan jednego okna nie może skasować bazy
   const gx = await b.newContext({ viewport: { width: 1000, height: 800 } }); const gp = await gx.newPage(); gp.on('dialog', d => d.accept());
   await gp.goto(base); await gp.waitForFunction(() => document.querySelector('#sync') && /OK|zapisano/.test(document.querySelector('#sync').textContent), null, { timeout: 15000 }).catch(() => {}); await gp.waitForTimeout(500);
-  const remoteCount = () => gp.evaluate(async () => { const C = window.BNI_CONFIG; const r = await fetch(C.url + '/rest/v1/bni_cards?select=id', { headers: { apikey: C.key, Authorization: 'Bearer ' + C.key } }); return (await r.json()).length; });
+  const remoteCount = () => gp.evaluate(async () => { const C = window.BNI_CONFIG; const r = await fetch(C.url + '/rest/v1/bni_cards?select=id', { headers: { apikey: C.key, Authorization: 'Bearer ' + window.BNIAuth.token() } }); return (await r.json()).length; });
   const cntBefore = await remoteCount();
   await gp.evaluate(() => { window.BNI.state.cards = []; window.BNI.state.links = []; window.BNI.save(); }); await gp.waitForTimeout(3000);
   const cntAfter = await remoteCount();
-  ok('synchronizacja: wyczyszczenie stanu w jednym oknie NIE kasuje bazy', cntBefore >= 4 && cntAfter === cntBefore, cntBefore + ' → ' + cntAfter);
+  ok('synchronizacja: wyczyszczenie stanu w jednym oknie NIE kasuje bazy', cntBefore >= 3 && cntAfter === cntBefore, cntBefore + ' → ' + cntAfter);
   ok('synchronizacja: użytkownik widzi komunikat o zatrzymaniu', /zatrzymano/.test(await gp.textContent('#sync')));
   if (cntAfter < cntBefore) { await gp.reload(); await gp.waitForTimeout(1500); await gp.evaluate(() => document.querySelector('#btn-demo').click()); await gp.waitForTimeout(3000); }
   await gx.close();
 
   // onboarding i ekran startowy z główną wizytówką i kodem QR
-  const ob = await b.rawContext({ viewport: { width: 1280, height: 800 } }); const op = await ob.newPage(); op.on('pageerror', e => errs.push('onboarding: ' + e.message)); op.on('dialog', d => d.accept());
+  const ob = await b.authContext({ viewport: { width: 1280, height: 800 } }, { onboarded: false }); const op = await ob.newPage(); op.on('pageerror', e => errs.push('onboarding: ' + e.message)); op.on('dialog', d => d.accept());
   await op.goto(base); await op.waitForSelector('#view-welcome.active', { timeout: 10000 });
   ok('onboarding: pierwsze uruchomienie pokazuje powitanie bez menu', !(await op.locator('.rail').isVisible()) && (await op.locator('#wl-start').isVisible()));
   ok('onboarding: ekran powitalny ma jedną akcję główną i „Pomiń”', (await op.locator('#view-welcome button:visible').count()) === 2);
   await op.click('#wl-start'); await op.waitForSelector('#wl-2:not([hidden])');
   ok('onboarding: „Dalej” czeka na imię', await op.locator('#wl-next').isDisabled());
   await op.fill('#wl-name', 'Test Onboarding'); await op.fill('#wl-phone', '+48 600 000 999'); await op.fill('#wl-email', 'onb@example.com');
+  ok('onboarding: zgoda na udostępnienie jest jawna (pole z opisem, co będzie publiczne)', /publicznie/.test(await op.textContent('.wl-share')));
   await op.click('#wl-next'); await op.waitForSelector('#view-cards.active #mine .mine-card');
   ok('start: główna wizytówka z danymi z onboardingu', /Test/i.test(await op.textContent('#mine .mine-card .nm')) && /onb@example.com/.test(await op.textContent('#mine .mine-card')));
   await op.waitForSelector('#mine-qr svg', { timeout: 8000 });
@@ -143,12 +154,12 @@ process.on('exit', () => {});
   ok('onboarding: po odświeżeniu nie wraca, wizytówka główna zostaje', (await op.locator('#view-welcome.active').count()) === 0 && (await op.locator('#mine .mine-card').count()) === 1);
   await op.evaluate(() => { const B = window.BNI; B.state.cards = B.state.cards.filter(c => c.name !== 'Test Onboarding'); B.save(); }); await op.waitForTimeout(2500);
   await ob.close();
-  const sk = await b.rawContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }); const sp = await sk.newPage(); sp.on('dialog', d => d.accept());
+  const sk = await b.authContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, { onboarded: false }); const sp = await sk.newPage(); sp.on('dialog', d => d.accept());
   await sp.goto(base); await sp.waitForSelector('#view-welcome.active'); await sp.click('#wl-skip'); await sp.waitForSelector('#view-cards.active');
   ok('onboarding: „Pomiń” prowadzi na start z zaproszeniem do utworzenia wizytówki', (await sp.locator('#mine .mine-empty').count()) === 1 && (await sp.locator('#mine-create').isVisible()));
   ok('onboarding: telefon bez poziomego przewijania', (await sp.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 1);
   await sp.screenshot({ path: OUT + '/o2-pomin-telefon.png' }); await sk.close();
-  const hx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }); await hx.addInitScript(() => { try { localStorage.setItem('bni-my-card', 'demo-adam'); } catch (e) {} });
+  const hx = await b.authContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }, { onboarded: true, mine: ADAM });
   const hp = await hx.newPage(); hp.on('dialog', d => d.accept()); await hp.goto(base); await hp.waitForSelector('#mine-qr svg', { timeout: 12000 }); await hp.waitForTimeout(400);
   ok('start (telefon): wizytówka i QR bez poziomego przewijania', (await hp.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 1);
   ok('start (telefon): lista pozostałych wizytówek schowana', !(await hp.locator('#all-cards').evaluate(d => d.open)));
@@ -196,7 +207,7 @@ process.on('exit', () => {});
   await mm.goto(base); await mm.waitForTimeout(2000); await mm.evaluate(() => window.BNIComfort.set('text', '150')); await mm.waitForTimeout(300);
   const over = [];
   for (const [v, st] of [['cards'], ['contacts'], ['links'], ['editor', 1], ['editor', 3], ['editor', 5], ['preview']]) {
-    await mm.evaluate(([vv, ss]) => { window.BNI.setCurrent('demo-adam'); window.BNI.show(vv); if (ss) window.BNI.setStep(ss); }, [v, st]); await mm.waitForTimeout(350);
+    await mm.evaluate(([vv, ss]) => { window.BNI.setCurrent(window.BNI.idOf('Adam Przykładowy')); window.BNI.show(vv); if (ss) window.BNI.setStep(ss); }, [v, st]); await mm.waitForTimeout(350);
     const d = await mm.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth); if (d > 1) over.push(v + (st ? ':' + st : '') + '=' + d + 'px');
   }
   ok('komfort: tekst 150% na telefonie bez poziomego przewijania (7 widoków)', over.length === 0, over.join(', '));
@@ -207,20 +218,96 @@ process.on('exit', () => {});
   await mm.screenshot({ path: OUT + '/c2-panel-telefon.png' });
   await mx.close();
 
+  // logowanie, rejestracja (walidacja), reset hasła, wylogowanie
+  const lx = await b.rawContext({ viewport: { width: 1000, height: 800 } }); const lp = await lx.newPage(); lp.on('pageerror', e => errs.push('logowanie: ' + e.message)); lp.on('dialog', d => d.accept());
+  await lp.goto(base); await lp.waitForSelector('#view-login.active', { timeout: 10000 });
+  ok('logowanie: niezalogowany widzi tylko ekran logowania (bez menu)', !(await lp.locator('.rail').isVisible()) && (await lp.locator('#au-form').isVisible()));
+  await lp.fill('#au-email', CR.a.email); await lp.fill('#au-pass', 'zle-haslo-123456'); await lp.click('#au-go'); await lp.waitForSelector('.au-msg.err', { timeout: 10000 });
+  ok('logowanie: błędne hasło → czytelny komunikat po polsku', /Nieprawidłowy e-mail lub hasło/.test(await lp.textContent('.au-msg')));
+  await lp.click('[data-au=signup]'); await lp.fill('#au-email', 'zly-adres'); await lp.fill('#au-pass', 'krotkie'); await lp.click('#au-go');
+  ok('rejestracja: walidacja adresu e-mail', /poprawny adres e-mail/.test(await lp.textContent('.au-msg')));
+  await lp.fill('#au-email', 'nikt@example.com'); await lp.fill('#au-pass', 'krotkie'); await lp.click('#au-go');
+  ok('rejestracja: hasło krótsze niż 10 znaków odrzucone', /co najmniej 10 znaków/.test(await lp.textContent('.au-msg')));
+  await lp.click('[data-au=login]'); await lp.click('[data-au=recover]');
+  await lp.fill('#au-email', 'nikt-' + Date.now() + '@example.com'); await lp.click('#au-go'); await lp.waitForFunction(() => /Sprawdź skrzynkę/.test(document.querySelector('#view-login').textContent), null, { timeout: 10000 });
+  ok('reset hasła: komunikat nie zdradza, czy konto istnieje', /Jeśli konto .* istnieje/.test(await lp.textContent('#view-login')));
+  await lp.click('[data-au=login]'); await lp.fill('#au-email', CR.a.email); await lp.fill('#au-pass', CR.a.password); await lp.click('#au-go');
+  await lp.waitForFunction(() => !document.querySelector('#view-login').classList.contains('active'), null, { timeout: 15000 });
+  ok('logowanie: poprawne dane wpuszczają do aplikacji', (await lp.evaluate(() => !!window.BNIAuth.user())) && (await lp.locator('#view-login.active').count()) === 0);
+  const uidA = await lp.evaluate(() => window.BNIAuth.user().id);
+  await lp.evaluate(() => window.BNIAuth.openAccount()); await lp.waitForSelector('#account-dialog[open]');
+  ok('konto: okno pokazuje e-mail i akcje (eksport, usunięcie danych, wylogowanie)', /e2e-a@example\.com/.test(await lp.textContent('#ac-mail')) && (await lp.locator('#ac-export, #ac-wipe, #ac-logout').count()) === 3);
+  await lp.click('#ac-logout'); await lp.waitForSelector('#view-login.active', { timeout: 10000 });
+  ok('wylogowanie: wraca ekran logowania, sesja i dane lokalne usunięte z urządzenia', (await lp.evaluate(u => !localStorage.getItem('bni-auth') && !localStorage.getItem('bni-connector-v3:' + u), uidA)));
+  await lx.close();
+
+  // prywatność: izolacja użytkowników (RLS) i dostęp niezalogowanego
+  const aRows = (await AH.rest(SA, 'GET', 'bni_cards?select=id,shared')).body, bRows = (await AH.rest(SB, 'GET', 'bni_cards?select=id')).body;
+  ok('RLS: użytkownik B nie widzi kart użytkownika A', Array.isArray(bRows) && bRows.length === 0 && Array.isArray(aRows) && aRows.length >= 3, 'A: ' + (aRows || []).length + ', B: ' + (bRows || []).length);
+  ok('RLS: B nie zmieni cudzej karty', (await AH.rest(SB, 'PATCH', 'bni_cards?id=eq.' + ADAM, { data: { name: 'HACK' } }, { Prefer: 'return=representation' })).body.length === 0);
+  ok('RLS: B nie usunie cudzej karty', (await AH.rest(SB, 'DELETE', 'bni_cards?id=eq.' + ADAM, undefined, { Prefer: 'return=representation' })).body.length === 0 && (await AH.rest(SA, 'GET', 'bni_cards?id=eq.' + ADAM + '&select=id')).body.length === 1);
+  ok('RLS: B nie wpisze karty „na konto” A', [401, 403].includes((await AH.rest(SB, 'POST', 'bni_cards', { id: 'hack' + Date.now(), owner: SA.user.id, data: {} })).status));
+  const anonRead = await Promise.all(['bni_cards', 'bni_contacts', 'bni_links', 'bni_settings'].map(t => AH.rest(null, 'GET', t + '?select=id')));
+  ok('anon (niezalogowany): nie odczyta żadnej tabeli', anonRead.every(r => Array.isArray(r.body) && r.body.length === 0));
+  ok('anon (niezalogowany): nie zapisze do bazy', [401, 403].includes((await AH.rest(null, 'POST', 'bni_cards', { id: 'x' + Date.now(), data: {} })).status));
+  ok('publiczna funkcja: prywatna wizytówka jest niedostępna', (await AH.rest(null, 'POST', 'rpc/get_public_card', { p_id: JAN })).body === null);
+  const pub = (await AH.rest(null, 'POST', 'rpc/get_public_card', { p_id: ADAM })).body;
+  ok('publiczna funkcja: udostępniona wizytówka zwraca dane (z listami)', pub && pub.card && pub.card.name === 'Adam Przykładowy' && Array.isArray(pub.card.offered) && pub.card.offered.length > 0);
+  const adamRow = (await AH.rest(SA, 'GET', 'bni_cards?id=eq.' + ADAM + '&select=data')).body[0].data;
+  await AH.rest(SA, 'PATCH', 'bni_cards?id=eq.' + ADAM, { data: Object.assign({}, adamRow, { showLists: false }) });
+  const pub2 = (await AH.rest(null, 'POST', 'rpc/get_public_card', { p_id: ADAM })).body;
+  ok('publiczna funkcja: bez list osób, gdy właściciel je wyłączy', pub2 && pub2.card && !('offered' in pub2.card) && !('sought' in pub2.card));
+  await AH.rest(SA, 'PATCH', 'bni_cards?id=eq.' + ADAM, { data: adamRow });
+
+  // zgoda na udostępnienie wizytówki + prywatna karta w podglądzie
+  const sh = await b.newContext({ viewport: { width: 1280, height: 900 } }); const shp = await sh.newPage(); shp.on('dialog', d => d.accept()); shp.on('pageerror', e => errs.push('udostępnianie: ' + e.message));
+  await shp.goto(base); await shp.waitForFunction(() => document.querySelector('#sync') && /OK|zapisano/.test(document.querySelector('#sync').textContent), null, { timeout: 15000 }).catch(() => {}); await shp.waitForTimeout(500);
+  await shp.evaluate(id => { window.BNI.openEditor(id); window.BNI.setStep(5); }, JAN); await shp.waitForSelector('#sh-on');
+  ok('prywatność: nowa/nieudostępniona wizytówka jest domyślnie prywatna', !(await shp.locator('#sh-on').isChecked()) && (await shp.locator('#sh-lists').isDisabled()));
+  await shp.evaluate(() => window.BNI.show('preview')); await shp.waitForTimeout(600);
+  ok('prywatność: podgląd prywatnej wizytówki pokazuje „QR po udostępnieniu”', /po udostępnieniu/.test(await shp.textContent('#sheet .cover .qr')));
+  await shp.evaluate(id => { window.BNI.openEditor(id); window.BNI.setStep(5); }, JAN); await shp.waitForSelector('#sh-on');
+  await shp.check('#sh-on'); await shp.waitForTimeout(3000);
+  ok('udostępnianie: po zgodzie karta jest publiczna', (await AH.rest(null, 'POST', 'rpc/get_public_card', { p_id: JAN })).body !== null);
+  await shp.uncheck('#sh-on'); await shp.waitForTimeout(3000);
+  ok('udostępnianie: wyłączenie natychmiast zamyka stronę publiczną', (await AH.rest(null, 'POST', 'rpc/get_public_card', { p_id: JAN })).body === null);
+  await sh.close();
+
+  // usunięcie wszystkich moich danych (konto B)
+  const bx = await b.authContextAs(SB, { viewport: { width: 1000, height: 800 } }, { onboarded: true }); const bp = await bx.newPage(); bp.on('dialog', d => d.accept());
+  await bp.goto(base); await bp.waitForFunction(() => document.querySelector('#sync') && /OK|zapisano/.test(document.querySelector('#sync').textContent), null, { timeout: 15000 }).catch(() => {});
+  await bp.click('#btn-new'); await bp.fill('[data-f=name]', 'Dane Do Usunięcia'); await bp.waitForTimeout(3000);
+  const bBefore = (await AH.rest(SB, 'GET', 'bni_cards?select=id')).body.length;
+  await bp.evaluate(() => window.BNI.wipeMyData()); await bp.waitForTimeout(1500);
+  const bAfter = (await AH.rest(SB, 'GET', 'bni_cards?select=id')).body.length;
+  ok('prywatność: „Usuń wszystkie moje dane” czyści bazę użytkownika', bBefore >= 1 && bAfter === 0, bBefore + ' → ' + bAfter);
+  ok('prywatność: dane A nietknięte po usunięciu danych B', (await AH.rest(SA, 'GET', 'bni_cards?select=id')).body.length >= 3);
+  await bx.close();
+
+  // PWA: kod QR działa bez internetu
+  const px = await b.authContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, { onboarded: true, mine: ADAM }); const pp = await px.newPage(); pp.on('pageerror', e => errs.push('pwa: ' + e.message));
+  await pp.goto(base); await pp.waitForSelector('#mine-qr svg', { timeout: 15000 });
+  await pp.evaluate(() => navigator.serviceWorker.ready); await pp.reload(); await pp.waitForSelector('#mine-qr svg', { timeout: 15000 }); await pp.waitForTimeout(800);
+  const man = await pp.evaluate(() => fetch('manifest.webmanifest').then(r => r.json()));
+  ok('PWA: skrót „Mój kod QR” w manifeście', man.shortcuts && man.shortcuts[0] && man.shortcuts[0].url.endsWith('#qr'));
+  await px.setOffline(true); await pp.goto(base + '#qr'); await pp.waitForSelector('#qr-screen .qs-qr svg', { timeout: 10000 });
+  ok('PWA: pełnoekranowy kod QR otwiera się bez internetu', (await pp.locator('#qr-screen .qs-qr svg').count()) === 1 && /bez internetu/.test(await pp.textContent('#qr-screen')));
+  await px.setOffline(false); await px.close();
+
   // widok publiczny wizytówki (cel kodu QR): tylko wizytówka + polecajki, bez zapisu do bazy
-  const vctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  const vctx = await b.rawContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   const v = await vctx.newPage(); const writes = []; const verrs = [];
   v.on('pageerror', e => verrs.push(e.message)); v.on('console', m => { if (/Content Security Policy|violates/i.test(m.text())) verrs.push('CSP: ' + m.text().slice(0, 120)); });
-  v.on('request', r => { if (/supabase\.co/.test(r.url()) && r.method() !== 'GET') writes.push(r.method() + ' ' + r.url()); });
+  v.on('request', r => { if (/supabase\.co/.test(r.url()) && r.method() !== 'GET' && !/rpc\/get_public_card/.test(r.url())) writes.push(r.method() + ' ' + r.url()); });
   const reqs = []; v.on('request', r => { if (/supabase\.co/.test(r.url())) reqs.push(r.url()); });
-  await v.goto(base + '#c=demo-adam'); await v.waitForSelector('.v-hero h1', { timeout: 15000 });
+  await v.goto(base + '#c=' + ADAM); await v.waitForSelector('.v-hero h1', { timeout: 15000 });
   ok('widok QR: pokazuje wizytówkę', /Adam/i.test(await v.textContent('.v-hero h1')));
   ok('widok QR: bez powłoki aplikacji (menu/nawigacja ukryte)', !(await v.isVisible('.rail')) && !(await v.isVisible('#tabs')));
   ok('widok QR: polecajki (TOP 20) widoczne', (await v.locator('.v-list li').count()) >= 20, (await v.locator('.v-list li').count()) + ' pozycji');
   ok('widok QR: 8 pytań 1:1', (await v.locator('.v-sec details').count()) === 8);
   ok('widok QR: przyciski Zadzwoń / Napisz / Zapisz kontakt', (await v.locator('a[href^="tel:"]').count()) >= 1 && (await v.locator('a[href^="mailto:"]').count()) === 1 && (await v.locator('#v-save').count()) === 1);
   ok('widok QR: brak poziomego przewijania', (await v.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 1);
-  ok('widok QR: tylko odczyt jednej karty i logo, bez zapisu', reqs.length === 2 && reqs.some(u => /bni_cards\?id=eq\.demo-adam/.test(u)) && reqs.some(u => /bni_settings\?id=eq\.logo/.test(u)) && writes.length === 0, reqs.length + ' zapytań, zapisów: ' + writes.length);
+  ok('widok QR: jedno publiczne zapytanie (funkcja get_public_card), bez zapisu', reqs.length === 1 && /rpc\/get_public_card/.test(reqs[0]) && writes.length === 0, reqs.length + ' zapytań, zapisów: ' + writes.length);
   ok('widok QR: logo (domyślnie BNI) i marka Referra', /BNI/.test(await v.textContent('.v-logo')) && /Referra/.test(await v.textContent('.v-foot')));
   await v.screenshot({ path: OUT + '/07-widok-qr.png', fullPage: true });
   const vc = await v.evaluate(() => window.BNIViewer.vcard({ name: 'Jan Test', phone: '+48 600 000 001', email: 'jan@example.com', company: 'Firma' }));
@@ -234,7 +321,7 @@ process.on('exit', () => {});
   await p.evaluate(() => window.BNI.show('cards')); await p.waitForTimeout(300);
   ok('nawigacja: 3 widoczne pozycje zamiast 6', (await p.locator('#tabs button:visible').count()) === 3);
   ok('start: jedna sugestia „Następny krok”', (await p.locator('#next-step .next').count()) === 1 && (await p.locator('#next-go').count()) === 1);
-  await p.evaluate(() => window.BNI.openEditor('demo-adam')); await p.evaluate(() => window.BNI.setStep(3)); await p.waitForTimeout(300);
+  await p.evaluate(() => window.BNI.openEditor(window.BNI.idOf('Adam Przykładowy'))); await p.evaluate(() => window.BNI.setStep(3)); await p.waitForTimeout(300);
   const rows5 = await p.locator('#tbl-offered tr[data-i]').count();
   ok('lista „Polecam”: tylko 5 wierszy naraz', rows5 === 5 && (await p.locator('[data-rows-more=offered]').count()) === 1, rows5 + ' wierszy');
   await p.click('[data-rows-more=offered]'); await p.waitForTimeout(150);
