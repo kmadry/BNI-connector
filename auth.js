@@ -64,6 +64,7 @@ async function consumeHash() {
   const at = p.get('access_token'), rt = p.get('refresh_token'); if (!at || !rt) return null;
   try {
     const u = await api('user', null, { method: 'GET', token: at });
+    if (!confirm('Ten link zaloguje Cię jako ' + (u.email || 'nieznane konto') + '. Czy to Twoje konto?')) { msg = { t: 'err', m: 'Anulowano. Jeśli to nie Ty prosiłeś o ten link, zignoruj go.' }; return { error: true }; }
     setSess({ access_token: at, refresh_token: rt, expires_in: +p.get('expires_in') || 3600, user: u });
     return { type: p.get('type') || 'signup' };
   } catch (e) { msg = { t: 'err', m: 'Nie udało się zalogować z linku. Spróbuj ponownie.' }; return { error: true }; }

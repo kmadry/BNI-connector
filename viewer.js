@@ -5,17 +5,18 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const blank = r => !r || !Object.values(r).some(v => String(v || '').trim());
 const tel = p => String(p || '').replace(/[^\d+]/g, '');
-const mailOk = e => /^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']+$/.test(String(e || ''));
+const mailOk = e => /^[A-Za-z0-9._+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/.test(String(e || ''));
+const vc = s => String(s ?? '').replace(/[\r\n]+/g, ' ').replace(/[\\;,]/g, m => '\\' + m).replace(/[<>]/g, '');
 const cell = v => esc(v || '').replace(/ \/ /g, ' · ');
 
 function vcard(c) {
   const parts = String(c.name || '').trim().split(/\s+/), last = parts.length > 1 ? parts.pop() : '', first = parts.join(' ');
-  const L = ['BEGIN:VCARD', 'VERSION:3.0', `N:${last};${first};;;`, `FN:${c.name || ''}`];
-  if (c.company || c.group) L.push(`ORG:${c.company || c.group}`);
+  const L = ['BEGIN:VCARD', 'VERSION:3.0', `N:${vc(last)};${vc(first)};;;`, `FN:${vc(c.name)}`];
+  if (c.company || c.group) L.push(`ORG:${vc(c.company || c.group)}`);
   [c.phone, c.phone2].filter(Boolean).forEach(p => L.push(`TEL;TYPE=CELL:${tel(p)}`));
   if (mailOk(c.email)) L.push(`EMAIL:${c.email}`);
-  if (c.city) L.push(`ADR;TYPE=WORK:;;;${c.city};;;`);
-  L.push(`NOTE:${[c.group, 'Wizytówka Referra'].filter(Boolean).join(' – ')}`, 'END:VCARD');
+  if (c.city) L.push(`ADR;TYPE=WORK:;;;${vc(c.city)};;;`);
+  L.push(`NOTE:${vc([c.group, 'Wizytówka Referra'].filter(Boolean).join(' – '))}`, 'END:VCARD');
   return L.join('\r\n').replace(/[<>]/g, '');
 }
 

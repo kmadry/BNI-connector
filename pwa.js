@@ -6,8 +6,18 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
 }
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-function cacheQr(o) { try { if (o && o.svg && o.url) localStorage.setItem(KEY, JSON.stringify({ url: o.url, name: o.name || '', svg: o.svg, at: Date.now() })); } catch (e) {} }
-function readQr() { try { return JSON.parse(localStorage.getItem(KEY)); } catch (e) { return null; } }
+const curUid = () => { try { const u = window.BNIAuth && window.BNIAuth.user(); return u && u.id || null; } catch (e) { return null; } };
+function cacheQr(o) { try { const u = curUid(); if (u && o && o.svg && o.url) localStorage.setItem(KEY, JSON.stringify({ uid: u, url: o.url, name: o.name || '', svg: o.svg, at: Date.now() })); } catch (e) {} }
+function readQr() { try { const c = JSON.parse(localStorage.getItem(KEY)), u = curUid(); return c && u && c.uid === u ? c : null; } catch (e) { return null; } }
+// SVG z pamięci: tylko proste kształty, bez skryptów i atrybutów zdarzeń
+function safeSvg(t) {
+  try {
+    const d = new DOMParser().parseFromString(String(t), 'image/svg+xml'), r = d.documentElement; if (!r || r.nodeName !== 'svg' || d.querySelector('parsererror')) return '';
+    for (const n of r.querySelectorAll('*')) { if (!/^(g|path|rect)$/.test(n.nodeName)) return ''; for (const a of n.attributes) if (/^on/i.test(a.name) || /href/i.test(a.name)) return ''; }
+    for (const a of r.attributes) if (/^on/i.test(a.name) || /href/i.test(a.name)) return '';
+    return r.outerHTML;
+  } catch (e) { return ''; }
+}
 function clearQr() { try { localStorage.removeItem(KEY); } catch (e) {} }
 
 let el = null;
@@ -16,7 +26,7 @@ function open() {
   if (el) return; const c = readQr();
   el = document.createElement('div'); el.id = 'qr-screen'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Mój kod QR');
   el.innerHTML = c
-    ? `<div class="qs-box"><div class="qs-qr">${c.svg}</div><p class="qs-name">${esc(c.name)}</p><p class="qs-hint">Pokaż ten kod, aby ktoś zobaczył Twoją wizytówkę.${navigator.onLine ? '' : ' Działa bez internetu.'}</p><button type="button" class="primary" id="qs-close">Zamknij</button></div>`
+    ? `<div class="qs-box"><div class="qs-qr">${safeSvg(c.svg)}</div><p class="qs-name">${esc(c.name)}</p><p class="qs-hint">Pokaż ten kod, aby ktoś zobaczył Twoją wizytówkę.${navigator.onLine ? '' : ' Działa bez internetu.'}</p><button type="button" class="primary" id="qs-close">Zamknij</button></div>`
     : `<div class="qs-box"><p class="qs-name">Nie ma jeszcze kodu QR</p><p class="qs-hint">Zaloguj się i udostępnij swoją wizytówkę w aplikacji. Potem kod będzie dostępny tutaj także offline.</p><button type="button" class="primary" id="qs-close">Zamknij</button></div>`;
   document.body.appendChild(el); document.body.classList.add('qr-screen-on');
   el.querySelector('#qs-close').onclick = close;

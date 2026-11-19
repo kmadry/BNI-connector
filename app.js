@@ -23,7 +23,7 @@ let currentId = state.cards[0]?.id || null;
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
-const uid = () => Math.random().toString(36).slice(2, 10);
+const uid = () => { const b = new Uint8Array(10); crypto.getRandomValues(b); return Array.from(b, x => (x % 36).toString(36)).join(''); };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 const SAFE_ID = /^[A-Za-z0-9_-]{1,40}$/;
@@ -34,7 +34,7 @@ function load() {
   try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.cards)) return { cards: s.cards.map(normCard), links: s.links || [], contacts: s.contacts || [], settings: s.settings || {} }; } catch (e) {}
   return { cards: [], links: [], contacts: [], settings: {} };
 }
-let rev = 0;
+let rev = 0, sessGen = 0;
 function save() { rev++; try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} schedulePush(); }
 function toast(msg) { const sn = document.getElementById('snack'); if (sn) sn.classList.remove('show'); const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2200); }
 
@@ -107,12 +107,15 @@ function push() {
 }
 
 function bootUser(uid) {
+  sessGen++;
   KEY = 'bni-connector-v3:' + uid; MINE_KEY = 'bni-my-card:' + uid; ONB_KEY = 'bni-onboarded:' + uid;
   state = load(); currentId = ((getMineId() && getCard(getMineId())) || state.cards[0])?.id || null;
   remoteCards = new Set(); remoteLinks = new Set(); remoteContacts = new Set(); dirty = false;
 }
-function teardown() {
-  try { localStorage.removeItem(KEY); localStorage.removeItem(MINE_KEY); localStorage.removeItem(ONB_KEY); } catch (e) {}
+function teardown(reason) {
+  sessGen++;
+  // wygaśnięcie sesji nie kasuje niezapisanych zmian na urządzeniu; świadome wylogowanie czyści wszystko
+  if (reason !== 'expired') { try { localStorage.removeItem(KEY); localStorage.removeItem(MINE_KEY); localStorage.removeItem(ONB_KEY); } catch (e) {} }
   state = { cards: [], links: [], contacts: [], settings: {} }; currentId = null; remoteCards = new Set(); remoteLinks = new Set(); remoteContacts = new Set(); dirty = false; clearTimeout(pushTimer);
   KEY = 'bni-connector-v3:anon'; if (window.BNIPwa) window.BNIPwa.clearQr();
 }
@@ -248,7 +251,8 @@ function renderMine() {
        <div class="mine-act"><button class="primary" id="mine-enable" data-qr-id="${esc(c.id)}">Udostępnij kodem QR</button><button class="back" data-edit-mine>Edytuj wizytówkę</button></div></div>`;
   box.innerHTML = `<section class="mine" aria-label="Twoja wizytówka"><div class="mine-card" style="--acc:${esc(c.accent || '#e8473f')}">${coverHTML(c, false)}</div><div class="mine-share">${share}</div></section>`;
   fitMine();
-  if (c.shared) onlineUrl(c).then(u => { const q = $('#mine-qr'); if (q) { try { const svg = qrSvg(u); q.innerHTML = svg; if (window.BNIPwa) window.BNIPwa.cacheQr({ url: u, name: c.name, svg }); } catch (e) { q.textContent = 'Za dużo danych na kod QR'; } } }).catch(() => {});
+  const gen0 = sessGen;
+  if (c.shared) onlineUrl(c).then(u => { if (gen0 !== sessGen) return; const q = $('#mine-qr'); if (q) { try { const svg = qrSvg(u); q.innerHTML = svg; if (window.BNIPwa) window.BNIPwa.cacheQr({ url: u, name: c.name, svg }); } catch (e) { q.textContent = 'Za dużo danych na kod QR'; } } }).catch(() => {});
 }
 let wlStep = 1;
 function wlGo(n) {
@@ -416,9 +420,9 @@ async function unpack(tok) {
   const raw = b64Bytes(tok.slice(2));
   if (tok.startsWith('r.')) return new TextDecoder().decode(raw);
   const ds = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-  const buf = await new Response(ds).arrayBuffer();
-  if (buf.byteLength > 200000) throw new Error('za duży ladunek');
-  return new TextDecoder().decode(buf);
+  const rd = ds.getReader(), parts = []; let n = 0;
+  for (;;) { const { done, value } = await rd.read(); if (done) break; n += value.byteLength; if (n > 200000) { try { await rd.cancel(); } catch (e) {} throw new Error('za duży ładunek'); } parts.push(value); }
+  return new TextDecoder().decode(await new Blob(parts).arrayBuffer());
 }
 const bytesB64 = u => btoa(String.fromCharCode(...u)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const b64Bytes = t => Uint8Array.from(atob(t.replace(/-/g, '+').replace(/_/g, '/')), ch => ch.charCodeAt(0));
@@ -529,7 +533,7 @@ async function showQr(id) {
     if (document.querySelector('#view-cards.active')) renderMine();
   }
   try {
-    const url = await onlineUrl(c); qrCur = { c, url };
+    const gen0 = sessGen, url = await onlineUrl(c); if (gen0 !== sessGen) return; qrCur = { c, url };
     $('#qr-name').textContent = c.name || 'Wizytówka'; $('#qr-big').innerHTML = qrSvg(url); $('#qr-url').textContent = url;
     if (window.BNIPwa && c.id === getMineId()) window.BNIPwa.cacheQr({ url, name: c.name, svg: qrSvg(url) });
     $('#qr-modal').showModal();
@@ -556,8 +560,9 @@ $('#file-import').onchange = async e => {
   try {
     const d = JSON.parse(await f.text());
     const cards = Array.isArray(d.cards) ? d.cards : d.id ? [d] : null; if (!cards) throw 0;
-    for (const c of cards) if (!getCard(c.id)) state.cards.push(normCard(c));
-    for (const l of d.links || []) if (okLink(l) && !state.links.some(x => x.id === l.id)) state.links.push({ id: l.id, from: l.from, to: l.to, note: String(l.note || '').slice(0, 500) });
+    const idMap = {};
+    for (const c of cards) { const n = normCard(c); idMap[c.id] = n.id = uid(); n.shared = false; delete n.showLists; state.cards.push(n); }
+    for (const l of d.links || []) if (okLink(l) && idMap[l.from] && idMap[l.to]) state.links.push({ id: uid(), from: idMap[l.from], to: idMap[l.to], note: String(l.note || '').slice(0, 500) });
     save(); renderList(); toast('Zaimportowano');
   } catch (err) { toast('Niepoprawny plik'); }
   e.target.value = '';
@@ -572,7 +577,7 @@ async function importFromHash() {
     const tok = m[1];
     const json = /^[zr]\./.test(tok) ? await unpack(tok) : unb64(tok);
     const c = normCard(JSON.parse(json));
-    if (confirm(`Dodać wizytówkę „${c.name}” do swojej listy?`)) { if (getCard(c.id)) c.id = uid(); state.cards.push(c); currentId = c.id; save(); renderList(); }
+    if (confirm(`Dodać wizytówkę „${c.name}” do swojej listy?`)) { c.id = uid(); c.shared = false; delete c.showLists; state.cards.push(c); currentId = c.id; save(); renderList(); }
   } catch (e) { toast('Niepoprawny link'); }
   history.replaceState(null, '', location.pathname + location.search);
 }
@@ -586,7 +591,7 @@ async function enterApp() {
 if (/^#(c|card)=/.test(location.hash) && window.BNIViewer) window.BNIViewer.run({ rest, rpc, unpack, normCard, okId, sanitizeLogo, logoHTML });
 else if (window.BNIAuth) window.BNIAuth.start({
   onSession: sess => { bootUser(sess.user.id); enterApp(); },
-  onSignedOut: () => { teardown(); show('login'); window.BNIAuth.showLoginScreen(); },
+  onSignedOut: reason => { teardown(reason); show('login'); window.BNIAuth.showLoginScreen(); },
   showLogin: () => show('login')
 });
 if (typeof module !== 'undefined') module.exports = { suggestions };
