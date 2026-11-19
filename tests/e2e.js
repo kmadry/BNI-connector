@@ -258,6 +258,12 @@ process.on('exit', () => {});
   ok('rejestracja: walidacja adresu e-mail', /poprawny adres e-mail/.test(await lp.textContent('.au-msg')));
   await lp.fill('#au-email', 'nikt@example.com'); await lp.fill('#au-pass', 'krotkie'); await lp.click('#au-go');
   ok('rejestracja: hasło krótsze niż 10 znaków odrzucone', /co najmniej 10 znaków/.test(await lp.textContent('.au-msg')));
+  await lp.fill('#au-email', 'nikt@example.com'); await lp.fill('#au-pass', 'dlugie-haslo-123'); await lp.click('#au-go');
+  ok('rejestracja: bez zgody na Regulamin i Politykę prywatności się nie da', /Zaznacz zgodę/.test(await lp.textContent('.au-msg')));
+  ok('rejestracja: linki do Regulaminu i Polityki prywatności', (await lp.locator('#view-login a[href="regulamin.html"]').count()) >= 1 && (await lp.locator('#view-login a[href="prywatnosc.html"]').count()) >= 1);
+  const lg = await lx.newPage(); const lgx = []; lg.on('request', r => { if (!/localhost|data:/.test(r.url())) lgx.push(r.url()); });
+  for (const pg of ['prywatnosc.html', 'regulamin.html']) { const rs = await lg.goto(base.replace(/[^/]*$/, '') + pg); ok('strona prawna ' + pg + ' dostępna', rs.status() === 200 && /RODO|Regulamin/.test(await lg.textContent('body'))); }
+  ok('strony prawne: żadnych zewnętrznych zapytań', lgx.length === 0, lgx.join(' | ')); await lg.close();
   await lp.click('[data-au=login]'); await lp.click('[data-au=recover]');
   await lp.fill('#au-email', 'nikt-' + Date.now() + '@example.com'); await lp.click('#au-go'); await lp.waitForFunction(() => /Sprawdź skrzynkę/.test(document.querySelector('#view-login').textContent), null, { timeout: 10000 });
   ok('reset hasła: komunikat nie zdradza, czy konto istnieje', /Jeśli konto .* istnieje/.test(await lp.textContent('#view-login')));

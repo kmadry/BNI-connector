@@ -558,7 +558,7 @@ $('#qr-dl').onclick = () => {
 $('#btn-export').onclick = () => {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }));
-  a.download = 'bni-connector.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  a.download = 'referra-moje-dane.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 };
 $('#file-import').onchange = async e => {
   const f = e.target.files[0]; if (!f) return; if (isGuest()) { e.target.value = ''; show('gate'); $('#gate-title').textContent = 'Import kopii jest dostępny po założeniu konta'; return; }

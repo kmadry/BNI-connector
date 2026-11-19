@@ -53,7 +53,8 @@ const user = () => (sess ? sess.user : null);
 
 /* ---- akcje ---- */
 async function login(email, password) { const j = await api('token?grant_type=password', { email, password }); setSess(j); markReturning(); return j; }
-async function signup(email, password) { const j = await api('signup?redirect_to=' + redirect(), { email, password }); markReturning(); if (j && j.access_token) { setSess(j); return { session: true }; } return { session: false }; }
+const consent = () => ({ terms_at: new Date().toISOString(), terms_v: '1.0' });
+async function signup(email, password) { const j = await api('signup?redirect_to=' + redirect(), { email, password, data: consent() }); markReturning(); if (j && j.access_token) { setSess(j); return { session: true }; } return { session: false }; }
 async function magic(email) { try { await api('otp?redirect_to=' + redirect(), { email, create_user: false }); } catch (e) { if (!/signups? not allowed|user not found/i.test(String(e.message))) throw e; } }
 async function recover(email) { await api('recover?redirect_to=' + redirect(), { email }); }
 async function updatePassword(password) { await ensure(); return api('user', { password }, { method: 'PUT', token: token() }); }
@@ -69,8 +70,19 @@ async function guestStart() {
 // Zamiana gościa w pełne konto: e-mail + hasło + potwierdzenie linkiem z wiadomości
 async function upgrade(email, password) {
   markReturning();
-  if (sess && sess.user.anon) { await ensure(); await api('user?redirect_to=' + redirect(), { email, password }, { method: 'PUT', token: token() }); return; }
+  if (sess && sess.user.anon) { await ensure(); await api('user?redirect_to=' + redirect(), { email, password, data: consent() }, { method: 'PUT', token: token() }); return; }
   await signup(email, password);
+}
+
+// Usunięcie konta (art. 17 RODO): funkcja serwerowa kasuje użytkownika, a baza kaskadowo jego dane
+async function deleteAccount() {
+  if (!sess) { if (window.BNI && window.BNI.wipeMyData) await window.BNI.wipeMyData(); return true; }
+  try {
+    await ensure();
+    const r = await fetch('api/account', { method: 'POST', headers: { Authorization: 'Bearer ' + token() } }), j = await r.json().catch(() => ({}));
+    if (!r.ok) return j.error || 'Nie udało się usunąć konta.';
+    clear(); return true;
+  } catch (e) { return 'Brak połączenia. Spróbuj ponownie.'; }
 }
 
 /* ---- link z e-maila (potwierdzenie, magic link, reset hasła) ---- */
@@ -99,12 +111,14 @@ function render() {
     body = `<form id="au-form" novalidate>
       ${mode !== 'newpass' ? `<label>E-mail <input id="au-email" type="email" autocomplete="email" required></label>` : ''}
       ${f ? `<label>${mode === 'newpass' ? 'Nowe hasło' : 'Hasło'} <input id="au-pass" type="password" autocomplete="${mode === 'login' ? 'current-password' : 'new-password'}" minlength="10" required></label>` : ''}
+      ${mode === 'signup' ? `<label class="chk"><input type="checkbox" id="au-terms"> Akceptuję <a href="regulamin.html" target="_blank" rel="noopener">Regulamin</a> i <a href="prywatnosc.html" target="_blank" rel="noopener">Polityka prywatności</a></label>` : ''}
       ${mode === 'newpass' ? `<label>Powtórz hasło <input id="au-pass2" type="password" autocomplete="new-password" required></label>` : ''}
       ${m}
       <div class="wl-actions"><button class="primary" id="au-go">${{ login: 'Zaloguj', signup: 'Załóż konto', recover: 'Wyślij link', magic: 'Wyślij link', newpass: 'Zapisz hasło' }[mode]}</button></div></form>
       <div class="au-links">${mode === 'login' ? '<button type="button" class="back" data-au="signup">Nie masz konta? Załóż konto</button><button type="button" class="back" data-au="recover">Nie pamiętam hasła</button><button type="button" class="back" data-au="magic">Zaloguj linkiem z e-maila</button><button type="button" class="back" data-au="guest">Utwórz prostą wizytówkę bez konta</button>' : mode !== 'newpass' ? '<button type="button" class="back" data-au="login">← Wróć do logowania</button>' : ''}</div>`;
   }
   v.innerHTML = `<div class="welcome"><div class="wl-panel"><svg class="wl-mark" viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="36" height="36"/><text x="20" y="29" text-anchor="middle">R</text></svg><h1>${head[0]}</h1>${head[1] ? `<p class="step-help">${esc(head[1])}</p>` : ''}${body}</div></div>`;
+  const lp = v.querySelector('.wl-panel'); if (lp) lp.insertAdjacentHTML('beforeend', '<p class="legal-note"><a href="regulamin.html" target="_blank" rel="noopener">Regulamin</a> · <a href="prywatnosc.html" target="_blank" rel="noopener">Polityka prywatności</a></p>');
   const first = v.querySelector('input'); if (first && mode !== 'sent') first.focus();
 }
 function go(m, message) { mode = m; msg = message || null; render(); }
@@ -115,6 +129,7 @@ document.addEventListener('submit', async e => {
   const fail = t => { msg = { t: 'err', m: t }; render(); const em = $('#au-email'); if (em) em.value = email; };
   if (mode !== 'newpass' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail('Podaj poprawny adres e-mail.');
   if ((mode === 'signup' || mode === 'newpass') && pw.length < 10) return fail('Hasło musi mieć co najmniej 10 znaków.');
+  if (mode === 'signup' && !$('#au-terms').checked) return fail('Zaznacz zgodę na Regulamin i Politykę prywatności.');
   if (mode === 'newpass' && pw !== $('#au-pass2').value) return fail('Hasła nie są takie same.');
   if (mode === 'login' && !pw) return fail('Wpisz hasło.');
   btn.disabled = true; btn.textContent = 'Chwileczkę…';
@@ -133,10 +148,10 @@ dlg.id = 'account-dialog'; dlg.setAttribute('aria-labelledby', 'ac-title');
 dlg.innerHTML = `<div class="cf-body"><h2 id="ac-title">Konto i prywatność</h2><p class="sub" id="ac-mail"></p>
   <section class="cf-group"><h3>Twoje dane</h3>
     <p class="hint">Wizytówki, kontakty i połączenia widzisz tylko Ty. Publicznie widać wyłącznie wizytówkę, którą sam udostępnisz kodem QR.</p>
-    <div class="cf-actions" style="justify-content:flex-start"><button type="button" id="ac-export">Pobierz moje dane</button><button type="button" class="danger" id="ac-wipe">Usuń wszystkie moje dane</button></div></section>
+    <div class="cf-actions" style="justify-content:flex-start"><button type="button" id="ac-export">Pobierz moje dane</button><button type="button" class="danger" id="ac-wipe">Usuń wszystkie moje dane</button><button type="button" class="danger" id="ac-delete">Usuń konto</button></div></section>
   <section class="cf-group" id="ac-guest" hidden><h3>Załóż konto</h3>
     <p class="hint">Teraz masz prostą wizytówkę bez konta. Dodaj e-mail i hasło, a odblokujesz kontakty, połączenia i skanowanie. Potwierdź adres kliknięciem w link z wiadomości. Twoja wizytówka zostaje.</p>
-    <form id="ac-up" novalidate><label>E-mail <input id="ac-upmail" type="email" autocomplete="email"></label><label>Hasło (min. 10 znaków) <input id="ac-uppass" type="password" autocomplete="new-password" minlength="10"></label><p class="au-msg" id="ac-upmsg" role="status"></p><button type="submit" class="primary">Załóż konto</button></form></section>
+    <form id="ac-up" novalidate><label>E-mail <input id="ac-upmail" type="email" autocomplete="email"></label><label>Hasło (min. 10 znaków) <input id="ac-uppass" type="password" autocomplete="new-password" minlength="10"></label><label class="chk"><input type="checkbox" id="ac-terms"> Akceptuję <a href="regulamin.html" target="_blank" rel="noopener">Regulamin</a> i <a href="prywatnosc.html" target="_blank" rel="noopener">Polityka prywatności</a></label><p class="au-msg" id="ac-upmsg" role="status"></p><button type="submit" class="primary">Załóż konto</button></form></section>
   <section class="cf-group" id="ac-pwbox"><h3>Hasło</h3><form id="ac-pw" novalidate><label>Nowe hasło (min. 10 znaków) <input id="ac-pass" type="password" autocomplete="new-password" minlength="10"></label><p class="au-msg" id="ac-pwmsg" role="status"></p><button type="submit">Zmień hasło</button></form></section>
   <div class="cf-actions"><button type="button" id="ac-logout">Wyloguj</button><button type="button" id="ac-logout-all">Wyloguj ze wszystkich urządzeń</button><button type="button" id="ac-signin" hidden>Mam już konto: zaloguj</button><button type="button" class="primary" id="ac-close">Zamknij</button></div></div>`;
 document.body.appendChild(dlg);
@@ -147,6 +162,7 @@ dlg.addEventListener('click', async e => {
   const id = e.target.id;
   if (id === 'ac-close' || e.target === dlg) dlg.close();
   else if (id === 'ac-logout') { dlg.close(); await logout(false); }
+  else if (id === 'ac-delete') { if (confirm('Usunąć konto razem ze wszystkimi wizytówkami, kontaktami i danymi? Tego nie da się cofnąć.')) { const r = await deleteAccount(); if (r === true) { dlg.close(); try { localStorage.removeItem(RET); Object.keys(localStorage).filter(k => /^bni-/.test(k)).forEach(k => localStorage.removeItem(k)); } catch (er) {} location.reload(); } else alert(r); } }
   else if (id === 'ac-signin') { dlg.close(); try { localStorage.setItem(RET, '1'); } catch (er) {} if (cb.onSignedOut) cb.onSignedOut('signin'); }
   else if (id === 'ac-logout-all') { if (confirm('Wylogować ze wszystkich urządzeń?')) { dlg.close(); await logout(true); } }
   else if (id === 'ac-export') { const b = document.getElementById('btn-export'); if (b) b.click(); }
@@ -157,6 +173,7 @@ dlg.addEventListener('submit', async e => {
     e.preventDefault(); const em = $('#ac-upmail').value.trim(), p = $('#ac-uppass').value, out = $('#ac-upmsg');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { out.textContent = 'Podaj poprawny adres e-mail.'; return; }
     if (p.length < 10) { out.textContent = 'Hasło musi mieć co najmniej 10 znaków.'; return; }
+    if (!$('#ac-terms').checked) { out.textContent = 'Zaznacz zgodę na Regulamin i Politykę prywatności.'; return; }
     try { await upgrade(em, p); out.textContent = 'Wysłaliśmy wiadomość na ' + em + '. Kliknij w link, aby potwierdzić adres. Do tego czasu możesz dalej korzystać z wizytówki.'; $('#ac-uppass').value = ''; } catch (err) { out.textContent = human(err); }
     return;
   }
