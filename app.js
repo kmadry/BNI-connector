@@ -273,6 +273,7 @@ $('#wl-2').addEventListener('submit', ev => {
   let c = getMine(); if (!c) { c = newCard(); state.cards.push(c); }
   c.name = name; c.phone = $('#wl-phone').value.trim(); c.email = $('#wl-email').value.trim();
   c.shared = $('#wl-share').checked; if (c.shared && c.showLists === undefined) c.showLists = true;
+  recordEvent('card_created', true);
   setMineId(c.id); finishOnb(); currentId = c.id; save(); show('cards'); toast('Gotowe. To Twoja wizytówka.');
 });
 document.addEventListener('change', e => {
@@ -587,7 +588,12 @@ async function importFromHash() {
 }
 
 window.BNI = { wipeMyData, idOf: name => (state.cards.find(c => c.name === name) || {}).id, getUser: () => window.BNIAuth && window.BNIAuth.user(), openEditor, getMine, getStep: () => step, setStep, revealRow: (k, i) => { shown[k] = Math.max(shown[k], i + 1); }, getLogo, setLogo, sanitizeLogo, logoHTML, renderPreview: () => renderPreview(), get state() { return state; }, setCurrent: id => { currentId = id; }, save, toast, uid, esc, $, $$, cur, getCard, show, renderTable, renderEditor, OFFERED_COLS, SOUGHT_COLS, MAX_ROWS, cloud: () => cloud };
+function recordEvent(kind, once) {
+  try { if (once && localStorage.getItem('bni-evt:' + kind)) return false; if (once) localStorage.setItem('bni-evt:' + kind, '1'); } catch (e) {}
+  rpc('record_event', { p_kind: kind }).catch(() => {}); return true;
+}
 document.addEventListener('click', e => {
+  const w = e.target.closest('[data-wish]'); if (w) { toast(recordEvent(w.dataset.wish, true) ? 'Dziękujemy. Damy znać, gdy to będzie gotowe.' : 'Już to zapisaliśmy. Dziękujemy.'); return; }
   if (e.target.closest('#gate-up')) { if (window.BNIAuth) window.BNIAuth.openAccount(); }
   else if (e.target.closest('#gate-back')) show('cards');
   else if (e.target.closest('#btn-account') && window.BNIAuth) window.BNIAuth.openAccount();

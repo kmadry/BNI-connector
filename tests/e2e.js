@@ -264,7 +264,7 @@ process.on('exit', () => {});
   ok('RLS: B nie usunie cudzej karty', (await AH.rest(SB, 'DELETE', 'bni_cards?id=eq.' + ADAM, undefined, { Prefer: 'return=representation' })).body.length === 0 && (await AH.rest(SA, 'GET', 'bni_cards?id=eq.' + ADAM + '&select=id')).body.length === 1);
   ok('RLS: B nie wpisze karty „na konto” A', [401, 403].includes((await AH.rest(SB, 'POST', 'bni_cards', { id: 'hack' + Date.now(), owner: SA.user.id, data: {} })).status));
   const anonRead = await Promise.all(['bni_cards', 'bni_contacts', 'bni_links', 'bni_settings'].map(t => AH.rest(null, 'GET', t + '?select=id')));
-  ok('anon (niezalogowany): nie odczyta żadnej tabeli', anonRead.every(r => Array.isArray(r.body) && r.body.length === 0));
+  ok('anon (niezalogowany): nie odczyta żadnej tabeli', anonRead.every(r => [401, 403].includes(r.status) || (Array.isArray(r.body) && r.body.length === 0)));
   ok('anon (niezalogowany): nie zapisze do bazy', [401, 403].includes((await AH.rest(null, 'POST', 'bni_cards', { id: 'x' + Date.now(), data: {} })).status));
   ok('publiczna funkcja: prywatna wizytówka jest niedostępna', (await AH.rest(null, 'POST', 'rpc/get_public_card', { p_id: JAN })).body === null);
   const pub = (await AH.rest(null, 'POST', 'rpc/get_public_card', { p_id: ADAM })).body;
