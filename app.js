@@ -1,6 +1,6 @@
 (() => {
 'use strict';
-const KEY = 'bni-connector-v2';
+let KEY = 'bni-connector-v3:anon';
 try { // jednorazowo porzuć stare dane lokalne (v1)
   if (!localStorage.getItem('bni-migrated-v2')) { localStorage.removeItem('bni-connector-v1'); localStorage.removeItem('bni-synced'); localStorage.setItem('bni-migrated-v2', '1'); }
 } catch (e) {}
@@ -40,33 +40,34 @@ function toast(msg) { const sn = document.getElementById('snack'); if (sn) sn.cl
 /* ---------- chmura (Supabase REST) ---------- */
 const CFG = window.BNI_CONFIG || {};
 const cloud = !!(CFG.url && CFG.key);
-const H = { apikey: CFG.key, Authorization: 'Bearer ' + CFG.key, 'Content-Type': 'application/json' };
+const authHeaders = () => ({ apikey: CFG.key, Authorization: 'Bearer ' + ((window.BNIAuth && window.BNIAuth.token()) || CFG.key), 'Content-Type': 'application/json' });
+const myUid = () => { const u = window.BNIAuth && window.BNIAuth.user(); return u ? u.id : 'anon'; };
 let guardHit = false, remoteContacts = new Set(), remoteCards = new Set(), remoteLinks = new Set(), dirty = false, pushTimer = null, pushing = Promise.resolve();
 function setSync(t, cls) { const el = $('#sync'); if (el) { el.textContent = t; el.className = cls || ''; } }
 async function rest(path, opt = {}) {
-  const r = await fetch(CFG.url + '/rest/v1/' + path, Object.assign({ headers: H }, opt));
+  if (window.BNIAuth) await window.BNIAuth.ensure();
+  let r = await fetch(CFG.url + '/rest/v1/' + path, Object.assign({ headers: authHeaders() }, opt));
+  if (r.status === 401 && window.BNIAuth && await window.BNIAuth.refresh()) r = await fetch(CFG.url + '/rest/v1/' + path, Object.assign({}, opt, { headers: Object.assign({}, opt.headers || {}, authHeaders()) }));
   if (!r.ok) throw new Error(path + ' ' + r.status);
   return r.status === 204 ? null : r.json().catch(() => null);
+}
+async function rpc(name, args) {
+  const r = await fetch(CFG.url + '/rest/v1/rpc/' + name, { method: 'POST', headers: { apikey: CFG.key, Authorization: 'Bearer ' + CFG.key, 'Content-Type': 'application/json' }, body: JSON.stringify(args || {}) });
+  if (!r.ok) throw new Error('rpc ' + r.status);
+  return r.json();
 }
 async function pull() {
   if (!cloud) return false;
   try {
     if (dirty) await push();
-    let [cs, ls, ks, ss] = await Promise.all([rest('bni_cards?select=id,data'), rest('bni_links?select=id,from_id,to_id,note'), rest('bni_contacts?select=id,data'), rest('bni_settings?select=id,data').catch(() => [])]);
+    let [cs, ls, ks, ss] = await Promise.all([rest('bni_cards?select=id,data,shared'), rest('bni_links?select=id,from_id,to_id,note'), rest('bni_contacts?select=id,data'), rest('bni_settings?select=id,data').catch(() => [])]);
     cs = cs.filter(r => okId(r.id)); ks = ks.filter(r => okId(r.id)); ls = ls.filter(l => okId(l.id) && okId(l.from_id) && okId(l.to_id));
-    const remoteSettings = {}; (ss || []).forEach(r => { if (r.id === 'logo') remoteSettings.logo = sanitizeLogo(r.data); });
-    const remote = { settings: remoteSettings, cards: cs.map(r => normCard(r.data || {})), links: ls.map(l => ({ id: l.id, from: l.from_id, to: l.to_id, note: l.note })), contacts: ks.map(r => Object.assign({}, r.data, { id: r.id })) };
+    const remoteSettings = {}; (ss || []).forEach(r => { if (r.id === 'logo:' + myUid()) remoteSettings.logo = sanitizeLogo(r.data); });
+    const remote = { settings: remoteSettings, cards: cs.map(r => normCard(Object.assign({}, r.data || {}, { shared: !!r.shared }))), links: ls.map(l => ({ id: l.id, from: l.from_id, to: l.to_id, note: l.note })), contacts: ks.map(r => Object.assign({}, r.data, { id: r.id })) };
     remoteCards = new Set(cs.map(r => r.id)); remoteLinks = new Set(ls.map(l => l.id)); remoteContacts = new Set(ks.map(r => r.id));
-    if (!localStorage.getItem('bni-synced')) { // pierwsze uruchomienie: dołącz lokalne wizytówki
-      state.cards.forEach(c => { if (!remoteCards.has(c.id)) remote.cards.push(c); });
-      state.links.forEach(l => { if (!remoteLinks.has(l.id)) remote.links.push(l); });
-      (state.contacts || []).forEach(c => { if (!remoteContacts.has(c.id)) remote.contacts.push(c); });
-      try { localStorage.setItem('bni-synced', '1'); } catch (_) {}
-      if (!remote.settings.logo && state.settings && state.settings.logo) remote.settings.logo = state.settings.logo;
-      state = remote; dirty = true; await push();
-    } else state = remote;
+    state = remote;
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (_) {}
-    if (!getCard(currentId)) currentId = (getCard('demo-adam') || state.cards[0])?.id || null;
+    if (!getCard(currentId)) currentId = ((typeof getMine === 'function' && getMine()) || state.cards[0])?.id || null;
     setSync('synchronizacja OK', 'ok'); return true;
   } catch (e) { setSync('offline (dane lokalne)', 'err'); return false; }
 }
@@ -78,20 +79,21 @@ function push() {
   const snap = JSON.parse(JSON.stringify(state));
   pushing = pushing.then(async () => {
     try {
-      const up = { method: 'POST', headers: Object.assign({}, H, { Prefer: 'resolution=merge-duplicates,return=minimal' }) };
+      if (window.BNIAuth) await window.BNIAuth.ensure();
+      const up = { method: 'POST', headers: Object.assign({}, authHeaders(), { Prefer: 'resolution=merge-duplicates,return=minimal' }) };
       const ids = new Set(snap.cards.map(c => c.id)), lids = new Set(snap.links.map(l => l.id)), kids = new Set((snap.contacts || []).map(c => c.id));
       const delK = [...remoteContacts].filter(i => !kids.has(i));
       if (delK.length > 5) { guardHit = true; delK.length = 0; }
       if (delK.length) await rest('bni_contacts?id=in.(' + delK.map(encodeURIComponent).join(',') + ')', { method: 'DELETE' });
       if (kids.size) await rest('bni_contacts?on_conflict=id', Object.assign({ body: JSON.stringify(snap.contacts.map(c => ({ id: c.id, data: c, updated_at: new Date().toISOString() }))) }, up));
       remoteContacts = kids;
-      if (snap.settings && snap.settings.logo) await rest('bni_settings?on_conflict=id', Object.assign({ body: JSON.stringify([{ id: 'logo', data: snap.settings.logo, updated_at: new Date().toISOString() }]) }, up));
+      if (snap.settings && snap.settings.logo) await rest('bni_settings?on_conflict=id', Object.assign({ body: JSON.stringify([{ id: 'logo:' + myUid(), data: snap.settings.logo, updated_at: new Date().toISOString() }]) }, up));
       const delL = [...remoteLinks].filter(i => !lids.has(i)), delC = [...remoteCards].filter(i => !ids.has(i));
       if (delL.length > 5) { guardHit = true; delL.length = 0; }
       if (delL.length) await rest('bni_links?id=in.(' + delL.map(encodeURIComponent).join(',') + ')', { method: 'DELETE' });
       if (delC.length > 1) { guardHit = true; delC.length = 0; }
       if (delC.length) await rest('bni_cards?id=in.(' + delC.map(encodeURIComponent).join(',') + ')', { method: 'DELETE' });
-      if (snap.cards.length) await rest('bni_cards?on_conflict=id', Object.assign({ body: JSON.stringify(snap.cards.map(c => ({ id: c.id, data: c, updated_at: new Date().toISOString() }))) }, up));
+      if (snap.cards.length) await rest('bni_cards?on_conflict=id', Object.assign({ body: JSON.stringify(snap.cards.map(c => ({ id: c.id, data: c, shared: !!c.shared, updated_at: new Date().toISOString() }))) }, up));
       const ok = snap.links.filter(l => ids.has(l.from) && ids.has(l.to));
       if (ok.length) await rest('bni_links?on_conflict=id', Object.assign({ body: JSON.stringify(ok.map(l => ({ id: l.id, from_id: l.from, to_id: l.to, note: l.note || '' }))) }, up));
       remoteCards = ids; remoteLinks = new Set(ok.map(l => l.id));
@@ -99,6 +101,23 @@ function push() {
     } catch (e) { dirty = true; setSync('błąd zapisu', 'err'); }
   });
   return pushing;
+}
+
+function bootUser(uid) {
+  KEY = 'bni-connector-v3:' + uid; MINE_KEY = 'bni-my-card:' + uid; ONB_KEY = 'bni-onboarded:' + uid;
+  state = load(); currentId = ((getMineId() && getCard(getMineId())) || state.cards[0])?.id || null;
+  remoteCards = new Set(); remoteLinks = new Set(); remoteContacts = new Set(); dirty = false;
+}
+function teardown() {
+  try { localStorage.removeItem(KEY); localStorage.removeItem(MINE_KEY); localStorage.removeItem(ONB_KEY); } catch (e) {}
+  state = { cards: [], links: [], contacts: [], settings: {} }; currentId = null; remoteCards = new Set(); remoteLinks = new Set(); remoteContacts = new Set(); dirty = false; clearTimeout(pushTimer);
+  KEY = 'bni-connector-v3:anon'; if (window.BNIPwa) window.BNIPwa.clearQr();
+}
+async function wipeMyData() {
+  try { for (const t of ['bni_links', 'bni_cards', 'bni_contacts', 'bni_settings']) await rest(t + '?id=not.is.null', { method: 'DELETE' }); } catch (e) { toast('Nie udało się usunąć danych. Spróbuj ponownie.'); return; }
+  state = { cards: [], links: [], contacts: [], settings: {} }; currentId = null; remoteCards = new Set(); remoteLinks = new Set(); remoteContacts = new Set(); dirty = false;
+  try { localStorage.setItem(KEY, JSON.stringify(state)); localStorage.removeItem(MINE_KEY); } catch (e) {}
+  if (window.BNIPwa) window.BNIPwa.clearQr(); renderList(); show('cards'); toast('Usunięto wszystkie Twoje dane');
 }
 
 function newCard(over = {}) {
@@ -136,6 +155,7 @@ const cur = () => getCard(currentId);
 function show(view) {
   $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
   document.body.classList.toggle('welcome', view === 'welcome');
+  document.body.classList.toggle('auth', view === 'login');
   if (view === 'welcome') renderWelcome();
   const NAV = { editor: 'cards', preview: 'cards', scan: 'contacts' };
   const own = [...document.querySelectorAll('#tabs button')].some(b => b.dataset.view === view && b.offsetParent !== null);
@@ -176,16 +196,19 @@ const filled = rows => rows.filter(r => Object.values(r).some(v => String(v || '
 $('#btn-new').onclick = () => { const c = newCard(); state.cards.push(c); save(); openEditor(c.id, 1); };
 $('#btn-demo').onclick = async () => {
   try {
-    const d = await (await fetch('demo.json')).json();
-    d.cards.forEach(c => { const k = state.cards.findIndex(x => x.id === c.id); if (k >= 0) state.cards[k] = c; else state.cards.push(c); });
-    (d.links || []).forEach(l => { if (!state.links.some(x => x.id === l.id)) state.links.push(l); });
-    currentId = d.cards[0].id; save(); renderList(); toast('Wczytano przykładowe wizytówki');
+    const d = await (await fetch('demo.json')).json(), map = {};
+    d.cards.forEach(c => {
+      const ex = state.cards.find(x => x.name === c.name); if (ex) { map[c.id] = ex.id; return; }
+      const id = 'd' + uid() + uid(); map[c.id] = id; state.cards.push(Object.assign({}, c, { id, shared: false }));
+    });
+    (d.links || []).forEach(l => { const f = map[l.from], t = map[l.to]; if (f && t && !state.links.some(x => x.from === f && x.to === t)) state.links.push({ id: 'l' + uid() + uid(), from: f, to: t, note: l.note }); });
+    currentId = map[d.cards[0].id]; save(); renderList(); toast('Wczytano przykładowe wizytówki');
   } catch (e) { toast('Nie udało się wczytać przykładu (wymaga http)'); }
 };
 
 /* ---------- edytor ---------- */
 /* ---------- wizytówka główna, onboarding, udostępnianie ---------- */
-const MINE_KEY = 'bni-my-card', ONB_KEY = 'bni-onboarded';
+let MINE_KEY = 'bni-my-card:anon', ONB_KEY = 'bni-onboarded:anon';
 const getMineId = () => { try { return localStorage.getItem(MINE_KEY); } catch (e) { return null; } };
 const setMineId = id => { try { localStorage.setItem(MINE_KEY, id); } catch (e) {} };
 const getMine = () => { const id = getMineId(); return id ? getCard(id) : null; };
@@ -202,11 +225,14 @@ function renderMine() {
     box.innerHTML = '<div class="mine mine-empty"><div><span class="next-k">Twoja wizytówka</span><p>Nie masz jeszcze swojej wizytówki.</p></div><button class="primary" id="mine-create">Utwórz wizytówkę</button></div>';
     return;
   }
-  box.innerHTML = `<section class="mine" aria-label="Twoja wizytówka"><div class="mine-card" style="--acc:${esc(c.accent || '#e8473f')}">${coverHTML(c, false)}</div>
-    <div class="mine-share"><div class="mine-qr" id="mine-qr" aria-label="Kod QR Twojej wizytówki"></div><p class="mine-cap">Zeskanuj, aby zobaczyć moją wizytówkę i zapisać kontakt.</p>
-    <div class="mine-act"><button class="primary" data-qr-id="${esc(c.id)}">Pokaż kod QR na pełnym ekranie</button><button id="mine-share">Udostępnij link</button><button class="back" data-edit-mine>Edytuj wizytówkę</button></div></div></section>`;
+  const share = c.shared
+    ? `<div class="mine-qr" id="mine-qr" aria-label="Kod QR Twojej wizytówki"></div><p class="mine-cap">Zeskanuj, aby zobaczyć moją wizytówkę i zapisać kontakt.</p>
+       <div class="mine-act"><button class="primary" data-qr-id="${esc(c.id)}">Pokaż kod QR na pełnym ekranie</button><button id="mine-share">Udostępnij link</button><button class="back" data-edit-mine>Edytuj wizytówkę</button></div>`
+    : `<div class="mine-private"><p class="mine-cap"><b>Ta wizytówka jest prywatna.</b> Nikt poza Tobą jej nie widzi. Udostępnij ją, aby pokazywać kod QR.</p>
+       <div class="mine-act"><button class="primary" id="mine-enable" data-qr-id="${esc(c.id)}">Udostępnij kodem QR</button><button class="back" data-edit-mine>Edytuj wizytówkę</button></div></div>`;
+  box.innerHTML = `<section class="mine" aria-label="Twoja wizytówka"><div class="mine-card" style="--acc:${esc(c.accent || '#e8473f')}">${coverHTML(c, false)}</div><div class="mine-share">${share}</div></section>`;
   fitMine();
-  onlineUrl(c).then(u => { const q = $('#mine-qr'); if (q) { try { q.innerHTML = qrSvg(u); } catch (e) { q.textContent = 'Za dużo danych na kod QR'; } } }).catch(() => {});
+  if (c.shared) onlineUrl(c).then(u => { const q = $('#mine-qr'); if (q) { try { const svg = qrSvg(u); q.innerHTML = svg; if (window.BNIPwa) window.BNIPwa.cacheQr({ url: u, name: c.name, svg }); } catch (e) { q.textContent = 'Za dużo danych na kod QR'; } } }).catch(() => {});
 }
 let wlStep = 1;
 function wlGo(n) {
@@ -222,7 +248,16 @@ $('#wl-2').addEventListener('submit', ev => {
   ev.preventDefault(); const name = $('#wl-name').value.trim(); if (!name) return;
   let c = getMine(); if (!c) { c = newCard(); state.cards.push(c); }
   c.name = name; c.phone = $('#wl-phone').value.trim(); c.email = $('#wl-email').value.trim();
+  c.shared = $('#wl-share').checked; if (c.shared && c.showLists === undefined) c.showLists = true;
   setMineId(c.id); finishOnb(); currentId = c.id; save(); show('cards'); toast('Gotowe. To Twoja wizytówka.');
+});
+document.addEventListener('change', e => {
+  const c = cur(); if (!c) return;
+  if (e.target.id === 'sh-on') {
+    if (e.target.checked && !confirm('Udostępnić wizytówkę przez kod QR?\n\nPublicznie zobaczą: imię, telefon, e-mail i (jeśli zostawisz włączone) polecane osoby.')) { e.target.checked = false; return; }
+    c.shared = e.target.checked; if (c.shared && c.showLists === undefined) c.showLists = true; save(); $('#sh-lists').disabled = !c.shared;
+  }
+  if (e.target.id === 'sh-lists') { c.showLists = e.target.checked; save(); }
 });
 document.addEventListener('click', async e => {
   const q = e.target.closest('#mine [data-qr-id]'); if (q) return showQr(q.dataset.qrId);
@@ -262,6 +297,7 @@ function renderDone() {
   const c = cur(); if (!c) return;
   const answered = c.qa.filter(x => String(x.a || '').trim()).length;
   const rows = [[1, 'Dane na wizytówce', c.name ? esc(c.name) : 'Brak imienia'], [2, 'Pytania', answered + ' z 8 odpowiedzi'], [3, 'Polecam', filled(c.offered).length + ' osób'], [4, 'Szukam', filled(c.sought).length + ' osób']];
+  const so = $('#sh-on'), sl = $('#sh-lists'); if (so) { so.checked = !!c.shared; sl.checked = c.showLists !== false; sl.disabled = !c.shared; }
   $('#done-list').innerHTML = rows.map(([n, t, v]) => `<div class="done-row"><div><b>${t}</b><span>${v}</span></div><button class="small" data-step-go="${n}">Zmień</button></div>`).join('');
 }
 function renderNext() {
@@ -372,6 +408,7 @@ const bytesB64 = u => btoa(String.fromCharCode(...u)).replace(/\+/g, '-').replac
 const b64Bytes = t => Uint8Array.from(atob(t.replace(/-/g, '+').replace(/_/g, '/')), ch => ch.charCodeAt(0));
 function baseUrl() { return (CFG.publicUrl || location.href).split('#')[0]; }
 async function onlineUrl(c) {
+  if (!c.shared) throw new Error('private');
   if (cloud) { if (!remoteCards.has(c.id)) dirty = true; await push(); if (remoteCards.has(c.id)) return baseUrl() + '#c=' + encodeURIComponent(c.id); }
   const slim = { id: c.id, name: c.name, group: c.group, city: c.city, company: c.company, phone: c.phone, phone2: c.phone2, email: c.email, accent: c.accent,
     qa: c.qa, offered: filled(c.offered), sought: filled(c.sought) };
@@ -384,6 +421,7 @@ function qrSvg(text) {
 async function fillQr(c) {
   const box = $('#sheet [data-qr]'), info = $('#qr-info');
   if (!box) { info.textContent = ''; return; }
+  if (!c.shared) { box.innerHTML = '<div>QR po udostępnieniu</div>'; info.textContent = 'Ta wizytówka jest prywatna, więc kod QR pojawi się po jej udostępnieniu (krok „Gotowe”).'; return; }
   try {
     const url = await onlineUrl(c);
     box.innerHTML = qrSvg(url) + '<div>Wizytówka online</div>';
@@ -469,9 +507,15 @@ function drawGraph() {
 let qrCur = null;
 async function showQr(id) {
   const c = getCard(id); if (!c) return toast('Wybierz wizytówkę');
+  if (!c.shared) {
+    if (!confirm('Ta wizytówka jest prywatna.\n\nKod QR prowadzi do publicznej strony z jej danymi (imię, telefon, e-mail i, jeśli zostawisz włączone, listy polecanych osób). Każdy, kto zeskanuje kod lub pozna link, je zobaczy.\n\nUdostępnić tę wizytówkę?')) return;
+    c.shared = true; if (c.showLists === undefined) c.showLists = true; save(); await push();
+    if (document.querySelector('#view-cards.active')) renderMine();
+  }
   try {
     const url = await onlineUrl(c); qrCur = { c, url };
     $('#qr-name').textContent = c.name || 'Wizytówka'; $('#qr-big').innerHTML = qrSvg(url); $('#qr-url').textContent = url;
+    if (window.BNIPwa && c.id === getMineId()) window.BNIPwa.cacheQr({ url, name: c.name, svg: qrSvg(url) });
     $('#qr-modal').showModal();
   } catch (e) { toast('Za dużo danych na kod QR – połącz się z bazą (krótki link)'); }
 }
@@ -517,10 +561,17 @@ async function importFromHash() {
   history.replaceState(null, '', location.pathname + location.search);
 }
 
-renderList();
-if (!/^#(c|card)=/.test(location.hash)) { let onb = true; try { onb = !!localStorage.getItem(ONB_KEY); } catch (e) {} if (!onb) show('welcome'); }
-window.BNI = { openEditor, getMine, getStep: () => step, setStep, revealRow: (k, i) => { shown[k] = Math.max(shown[k], i + 1); }, getLogo, setLogo, sanitizeLogo, logoHTML, renderPreview: () => renderPreview(), get state() { return state; }, setCurrent: id => { currentId = id; }, save, toast, uid, esc, $, $$, cur, getCard, show, renderTable, renderEditor, OFFERED_COLS, SOUGHT_COLS, MAX_ROWS, cloud: () => cloud };
-if (/^#(c|card)=/.test(location.hash) && window.BNIViewer) window.BNIViewer.run({ rest, unpack, normCard, okId, sanitizeLogo, logoHTML });
-else pull().then(() => { renderList(); if (window.BNIContacts) window.BNIContacts.onData(); return importFromHash(); });
+window.BNI = { wipeMyData, idOf: name => (state.cards.find(c => c.name === name) || {}).id, getUser: () => window.BNIAuth && window.BNIAuth.user(), openEditor, getMine, getStep: () => step, setStep, revealRow: (k, i) => { shown[k] = Math.max(shown[k], i + 1); }, getLogo, setLogo, sanitizeLogo, logoHTML, renderPreview: () => renderPreview(), get state() { return state; }, setCurrent: id => { currentId = id; }, save, toast, uid, esc, $, $$, cur, getCard, show, renderTable, renderEditor, OFFERED_COLS, SOUGHT_COLS, MAX_ROWS, cloud: () => cloud };
+async function enterApp() {
+  renderList(); let onb = true; try { onb = !!localStorage.getItem(ONB_KEY); } catch (e) {}
+  show(onb ? 'cards' : 'welcome');
+  await pull(); renderList(); if (window.BNIContacts) window.BNIContacts.onData(); await importFromHash();
+}
+if (/^#(c|card)=/.test(location.hash) && window.BNIViewer) window.BNIViewer.run({ rest, rpc, unpack, normCard, okId, sanitizeLogo, logoHTML });
+else if (window.BNIAuth) window.BNIAuth.start({
+  onSession: sess => { bootUser(sess.user.id); enterApp(); },
+  onSignedOut: () => { teardown(); show('login'); window.BNIAuth.showLoginScreen(); },
+  showLogin: () => show('login')
+});
 if (typeof module !== 'undefined') module.exports = { suggestions };
 })();

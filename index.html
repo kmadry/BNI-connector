@@ -31,6 +31,7 @@
     <button data-view="preview" class="adv"><svg viewBox="0 0 24 24"><path d="M7 9V4h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="7" y="14" width="10" height="6"/></svg><span>Druk</span></button>
   </nav>
   <div class="rail-foot">
+    <button id="btn-account" class="ghost" title="Konto i prywatność"><span>Konto</span></button>
     <button id="btn-palette" class="ghost" title="Szukaj i polecenia (Ctrl/⌘ + K)"><span>Szukaj…</span><kbd>⌘K</kbd></button>
     <button id="btn-theme" class="ghost" title="Komfort: rozmiar tekstu, kontrast, motyw" aria-label="Komfort: rozmiar tekstu, kontrast, motyw"><span class="aa" aria-hidden="true">Aa</span> Komfort</button>
     <small id="sync" title="Synchronizacja z bazą"></small>
@@ -38,6 +39,9 @@
 </aside>
 
 <main>
+  <!-- LOGOWANIE -->
+  <section id="view-login" class="view"></section>
+
   <!-- POWITANIE (pierwsze uruchomienie) -->
   <section id="view-welcome" class="view">
     <div class="welcome">
@@ -56,6 +60,7 @@
           <label>Telefon <input id="wl-phone" type="tel" autocomplete="tel"></label>
           <label>E-mail <input id="wl-email" type="email" autocomplete="email"></label>
         </div>
+        <label class="chk wl-share"><input type="checkbox" id="wl-share" checked> Udostępnij moją wizytówkę przez kod QR (publicznie zobaczą imię, telefon i e-mail)</label>
         <div class="wl-actions"><button type="button" id="wl-back">Wstecz</button><button class="primary" id="wl-next" disabled>Pokaż moją wizytówkę</button></div>
       </form>
     </div>
@@ -164,6 +169,7 @@
         <h2 class="step-h">Gotowe</h2>
         <p class="step-help">Wizytówka zapisuje się sama. Możesz ją teraz wydrukować albo udostępnić.</p>
         <div id="done-list" class="done-list"></div>
+        <div class="share-box"><label class="chk"><input type="checkbox" id="sh-on"> Udostępnij wizytówkę przez kod QR</label><label class="chk"><input type="checkbox" id="sh-lists"> Pokaż na niej polecane osoby</label><p class="hint">Wizytówka jest domyślnie prywatna. Po udostępnieniu każdy z kodem lub linkiem zobaczy jej dane.</p></div>
         <div class="done-actions">
           <button class="primary" id="btn-to-preview">Podgląd i druk</button>
           <button data-qr-open>Pokaż kod QR</button>
@@ -249,6 +255,8 @@
 </dialog>
 <div id="toast" role="status" aria-live="polite"></div>
 <script src="config.js"></script>
+<script src="auth.js"></script>
+<script src="pwa.js"></script>
 <script src="qrcode.js"></script>
 <script src="viewer.js"></script>
 <script src="scan.js"></script>

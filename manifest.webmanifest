@@ -6,5 +6,27 @@
   "background_color": "#f2eee3",
   "theme_color": "#f2eee3",
   "lang": "pl",
-  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mój kod QR",
+      "short_name": "Mój QR",
+      "description": "Pokaż kod QR mojej wizytówki",
+      "url": "./#qr",
+      "icons": [
+        {
+          "src": "icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
+  ]
 }

@@ -506,3 +506,26 @@ body.welcome main{padding-top:48px}
 
 @media (max-width:900px){.mine{grid-template-columns:1fr;gap:28px}.mine-empty{grid-template-columns:1fr}.mine-empty .primary{width:100%}}
 @media (max-width:820px){.mine-act .primary{width:100%;justify-content:center}.wl-actions .primary{width:100%}.welcome{min-height:calc(100vh - 140px)}}
+
+
+/* =====================================================================
+   Logowanie, konto, udostępnianie, kod QR na pełnym ekranie
+   ===================================================================== */
+body.auth .rail{display:none}body.auth .app{display:block}body.auth main{padding-top:48px}
+#au-form label{display:flex;flex-direction:column;gap:6px;margin:0 0 22px;font:600 13px var(--sans);color:var(--muted)}
+#au-form input{border:0;border-bottom:1px solid var(--rule);background:transparent;padding-left:0;font-size:17px}
+.au-msg{margin:0 0 18px;font-weight:600}.au-msg.err{color:var(--accent)}.au-msg.ok{color:var(--text)}
+.au-links{display:flex;flex-direction:column;gap:2px;margin-top:28px;align-items:flex-start}
+#account-dialog{max-width:min(94vw,560px)}
+#account-dialog .cf-group{margin-bottom:28px}
+#account-dialog label{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;font:600 13px var(--sans);color:var(--muted)}
+.share-box{margin:0 0 32px;padding:20px;border:1px solid var(--rule);background:var(--surface);display:flex;flex-direction:column;gap:10px}
+.share-box .hint{margin:4px 0 0}
+.wl-share{margin-top:22px;align-items:flex-start;line-height:1.45}.wl-share input{margin-top:4px}
+.mine-private{display:flex;flex-direction:column;gap:18px}
+#qr-screen{position:fixed;inset:0;z-index:10000;background:#fff;color:#111;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center}
+.qs-box{display:flex;flex-direction:column;align-items:center;gap:16px;max-width:520px}
+.qs-qr{width:min(86vw,60vh);line-height:0}.qs-qr svg{width:100%;height:auto;display:block}
+.qs-name{margin:0;font:700 clamp(24px,5vw,34px)/1.15 'IBM Plex Serif',Georgia,serif}.qs-hint{margin:0;color:#444;font-size:16px}
+body.qr-screen-on{overflow:hidden}
+@media print{#qr-screen{display:none}}

@@ -41,7 +41,7 @@ dlg.innerHTML = `<div class="cf-body">
   ${GROUPS.map(g => `<section class="cf-group"><h3>${g.title}</h3>${g.items.map(it => `<div class="cf-row"><span class="cf-label" id="cf-l-${it.key}">${it.label}</span>
     <div class="cf-seg" role="group" aria-labelledby="cf-l-${it.key}">${it.opts.map(([v, l]) => `<button type="button" data-k="${it.key}" data-v="${v}" aria-pressed="false">${l}</button>`).join('')}</div>${it.note ? `<small class="cf-note">${it.note}</small>` : ''}</div>`).join('')}</section>`).join('')}
   <section class="cf-preview" aria-label="Podgląd"><h3>Tak to wygląda</h3><p>Przykładowy tekst, który czytasz na co dzień. <b>Wyróżnienie</b> i <span class="cf-link">odnośnik</span>.</p><button type="button" class="primary">Przykładowy przycisk</button></section>
-  <div class="cf-actions"><button type="button" id="cf-reset">Przywróć domyślne</button><button type="button" class="primary" id="cf-close">Gotowe</button></div>
+  <div class="cf-actions"><button type="button" id="cf-account">Konto i prywatność</button><button type="button" id="cf-reset">Przywróć domyślne</button><button type="button" class="primary" id="cf-close">Gotowe</button></div>
 </div>`;
 document.body.appendChild(dlg);
 
@@ -49,6 +49,7 @@ function sync() { dlg.querySelectorAll('.cf-seg button').forEach(b => b.setAttri
 dlg.addEventListener('click', e => {
   const b = e.target.closest('.cf-seg button');
   if (b) { st[b.dataset.k] = b.dataset.v; apply(); save(); sync(); return; }
+  if (e.target.id === 'cf-account') { dlg.close(); if (window.BNIAuth) window.BNIAuth.openAccount(); return; }
   if (e.target.id === 'cf-reset') { st = Object.assign({}, DEFAULTS); apply(); save(); sync(); return; }
   if (e.target.id === 'cf-close' || e.target === dlg) dlg.close();
 });

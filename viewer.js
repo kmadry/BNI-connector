@@ -55,16 +55,15 @@ async function run(ctx) {
   root.innerHTML = '<div class="v-skel" aria-busy="true"><div class="v-sk a"></div><div class="v-sk b"></div><div class="v-sk c"></div></div>';
   try {
     const m = location.hash.match(/^#(c|card)=(.+)$/); let card;
+    let logo = null;
     if (m[1] === 'c') {
       const id = decodeURIComponent(m[2]);
       if (!ctx.okId(id)) return fail('Nie znaleziono wizytówki', 'Link jest nieprawidłowy.');
-      const rows = await ctx.rest('bni_cards?id=eq.' + encodeURIComponent(id) + '&select=data');
-      if (!rows || !rows[0]) return fail('Nie znaleziono wizytówki', 'Mogła zostać usunięta.');
-      card = ctx.normCard(rows[0].data || {});
+      const res = await ctx.rpc('get_public_card', { p_id: id });
+      if (!res || !res.card) return fail('Nie znaleziono wizytówki', 'Jest prywatna albo została usunięta.');
+      card = ctx.normCard(res.card); logo = ctx.sanitizeLogo(res.logo);
     } else card = ctx.normCard(JSON.parse(await ctx.unpack(m[2])));
-    let logo = null;
-    try { const sr = await ctx.rest('bni_settings?id=eq.logo&select=data'); logo = ctx.sanitizeLogo(sr && sr[0] && sr[0].data); } catch (e) { logo = ctx.sanitizeLogo(null); }
-    render(card, ctx, logo);
+    render(card, ctx, logo || ctx.sanitizeLogo(null));
   } catch (e) { fail('Nie udało się wczytać wizytówki', 'Sprawdź połączenie z internetem i spróbuj ponownie.'); }
 }
 
