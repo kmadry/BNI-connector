@@ -16,16 +16,16 @@
 <tr><td>Adres e-mail i hasło (hasło zapisane wyłącznie w postaci skrótu)</td><td>Założenie i obsługa konta, logowanie, odzyskiwanie hasła</td><td>Art. 6 ust. 1 lit. b (umowa o świadczenie usługi)</td></tr>
 <tr><td>Treść wizytówki: imię i nazwisko, telefon, e-mail, firma, miasto, grupa, listy poleceń, odpowiedzi, logo</td><td>Tworzenie, edycja, wydruk i udostępnianie wizytówki</td><td>Art. 6 ust. 1 lit. b</td></tr>
 <tr><td>Kontakty, powiązania między wizytówkami, ustawienia</td><td>Funkcje po założeniu konta</td><td>Art. 6 ust. 1 lit. b</td></tr>
-<tr><td>Publiczne udostępnienie wizytówki (kod QR i strona online)</td><td>Pokazanie wybranych danych osobom, którym pokażesz kod</td><td>Art. 6 ust. 1 lit. a (twoja zgoda; możesz ją w każdej chwili cofnąć wyłączając udostępnianie)</td></tr>
+<tr><td>Publiczne udostępnienie wizytówki (kod QR i strona online)</td><td>Pokazanie wybranych danych osobom, którym pokażesz kod</td><td>Art. 6 ust. 1 lit. a (twoja zgoda; zapisujemy jej datę przy wizytówce; możesz ją w każdej chwili cofnąć wyłączając udostępnianie)</td></tr>
 <tr><td>Anonimowy identyfikator konta gościa</td><td>Zapis prostej wizytówki bez rejestracji</td><td>Art. 6 ust. 1 lit. b</td></tr>
-<tr><td>Zagregowane liczniki zdarzeń (np. „utworzono wizytówkę”, „zainteresowanie funkcją”), bez danych osobowych</td><td>Rozwój usługi</td><td>Art. 6 ust. 1 lit. f (prawnie uzasadniony interes)</td></tr>
+<tr><td>Zagregowane dzienne liczniki zdarzeń (np. „utworzono wizytówkę”, „zainteresowanie funkcją”), bez żadnych identyfikatorów</td><td>Rozwój usługi</td><td>Art. 6 ust. 1 lit. f (prawnie uzasadniony interes)</td></tr>
 <tr><td>Dane techniczne w logach serwera (adres IP, czas, adres żądania)</td><td>Bezpieczeństwo i wykrywanie nadużyć</td><td>Art. 6 ust. 1 lit. f</td></tr></table>
 
 <h2>3. Co jest publiczne</h2>
 <p>Wizytówka jest domyślnie prywatna. Dopiero po twojej zgodzie, wyrażonej zaznaczeniem pola „Udostępnij”, strona z jej adresem staje się dostępna dla każdego, kto zna link lub zeskanuje kod QR. Publicznie widać dane wpisane na wizytówce. Listy poleceń możesz osobno ukryć. Wyłączenie udostępniania zamyka stronę natychmiast.</p>
 
 <h2>4. Cookies i pamięć przeglądarki</h2>
-<p>Nie używamy plików cookies reklamowych ani analitycznych i nie śledzimy użytkowników. Aplikacja zapisuje w pamięci przeglądarki (localStorage i pamięć podręczna) wyłącznie dane niezbędne do jej działania: sesję logowania, kopię twoich wizytówek, ustawienia wyglądu i dostępności, informację o ukończonym powitaniu oraz kopię aplikacji do pracy bez internetu. Są one niezbędne do świadczenia usługi, więc nie wymagają osobnej zgody. Możesz je usunąć w ustawieniach przeglądarki albo przyciskiem „Usuń wszystkie moje dane”.</p>
+<p>Nie używamy plików cookies reklamowych ani analitycznych i nie śledzimy użytkowników. Aplikacja zapisuje w pamięci przeglądarki (localStorage i pamięć podręczna) wyłącznie dane niezbędne do jej działania: sesję logowania, kopię twoich wizytówek, ostatnio użyty kod QR (do pokazania bez internetu), ustawienia wyglądu i dostępności, znaczniki „powitanie ukończone”, „wróciłem do aplikacji” i „zgłoszono zainteresowanie funkcją” oraz kopię aplikacji do pracy bez internetu. Są one niezbędne do świadczenia usługi, więc nie wymagają osobnej zgody. Możesz je usunąć w ustawieniach przeglądarki albo przyciskiem „Usuń wszystkie moje dane”.</p>
 
 <h2>5. Zewnętrzne zasoby</h2>
 <p>Czcionki, biblioteka kodów QR i silnik rozpoznawania tekstu ze zdjęć wizytówek są hostowane na tej samej domenie. Zdjęcia wizytówek są odczytywane lokalnie w twojej przeglądarce i nie są wysyłane na serwer.</p>
@@ -33,16 +33,17 @@
 <h2>6. Odbiorcy danych</h2>
 <ul>
 <li><b>Supabase</b>: baza danych i uwierzytelnianie. Region serwera: UE (Frankfurt, Niemcy).</li>
-<li><b>Vercel</b>: hosting aplikacji i logi techniczne.</li>
+<li><b>Vercel</b>: hosting aplikacji i logi techniczne (adresy IP i adresy żądań, w tym podpisanych linków do kart w Portfelu). Funkcje serwerowe działają w regionie UE (Frankfurt).</li>
+<li><b>Apple i Google</b>: jeśli dodasz wizytówkę do Portfela Apple lub Google Wallet, jej dane (imię, firma, telefon, e-mail i adres wizytówki online) trafiają do tego dostawcy i pozostają w twoim Portfelu, dopóki ich nie usuniesz. Usunięcie konta w Referze nie usuwa karty z Portfela.</li>
 <li><b>Dostawca wiadomości e-mail</b> (potwierdzenia i reset hasła): <mark>[NAZWA DOSTAWCY]</mark>.</li>
 </ul>
 <p>Jeśli któryś podmiot przetwarza dane poza Europejskim Obszarem Gospodarczym, robimy to na podstawie standardowych klauzul umownych lub certyfikacji w ramach EU-US Data Privacy Framework. Nie sprzedajemy danych i nie udostępniamy ich reklamodawcom.</p>
 
 <h2>7. Jak długo przechowujemy dane</h2>
 <ul><li>Dane konta i wizytówek: do usunięcia konta lub danych przez ciebie.</li>
-<li>Konta gości bez aktywności przez 90 dni: usuwane automatycznie.</li>
-<li>Logi techniczne: do <mark>[np. 30]</mark> dni.</li>
-<li>Liczniki zdarzeń bez danych osobowych: bez ograniczenia.</li></ul>
+<li>Konta gości: usuwane automatycznie po 90 dniach bez logowania i bez zmian w danych.</li>
+<li>Logi techniczne (Vercel, Supabase): zgodnie z planem dostawcy, nie dłużej niż <mark>[np. 30]</mark> dni.</li>
+<li>Dzienne liczniki zdarzeń bez identyfikatorów: bez ograniczenia (nie są danymi osobowymi).</li></ul>
 
 <h2>8. Twoje prawa</h2>
 <p>Masz prawo do dostępu do danych, ich sprostowania, usunięcia, ograniczenia przetwarzania, przenoszenia, sprzeciwu wobec przetwarzania opartego na prawnie uzasadnionym interesie oraz cofnięcia zgody w dowolnym momencie (bez wpływu na zgodność z prawem wcześniejszego przetwarzania). W aplikacji, w oknie „Konto”, możesz samodzielnie pobrać swoje dane w formacie JSON, usunąć wszystkie dane i usunąć konto. W innych sprawach napisz na adres z pkt 1. Masz też prawo wnieść skargę do Prezesa Urzędu Ochrony Danych Osobowych (ul. Stawki 2, 00-193 Warszawa).</p>
@@ -52,7 +53,7 @@
 <p>Jeśli ktoś dodał twoje dane do swoich kontaktów w Referze (np. po wymianie wizytówek), jest ich administratorem i odpowiada za podstawę ich przetwarzania. Referra przechowuje je wyłącznie na jego polecenie i nie używa do własnych celów. Zakres: dane z wizytówki (imię, nazwisko, firma, stanowisko, telefon, e-mail, miasto). Źródło: użytkownik. Aby usunąć swoje dane lub skorzystać z innych praw, zwróć się do tego użytkownika, a jeśli to niemożliwe, napisz do nas, a pomożemy.</p>
 
 <h2>10. Bezpieczeństwo</h2>
-<p>Dane są szyfrowane w transmisji (HTTPS). Każdy użytkownik widzi w bazie tylko swoje dane (zabezpieczenia na poziomie wierszy), hasła są przechowywane jako skróty, a aplikacja stosuje restrykcyjną politykę bezpieczeństwa treści (CSP). W razie naruszenia ochrony danych zgłosimy je organowi i, gdy wymaga tego prawo, poinformujemy osoby, których dotyczy.</p>
+<p>Dane są szyfrowane w transmisji (HTTPS). Supabase zapisuje w dziennikach uwierzytelniania adres IP i przeglądarkę osób logujących się. Każdy użytkownik widzi w bazie tylko swoje dane (zabezpieczenia na poziomie wierszy), hasła są przechowywane jako skróty, a aplikacja stosuje restrykcyjną politykę bezpieczeństwa treści (CSP). W razie naruszenia ochrony danych zgłosimy je organowi i, gdy wymaga tego prawo, poinformujemy osoby, których dotyczy.</p>
 
 <h2>11. Zmiany</h2>
 <p>O istotnych zmianach powiadomimy w aplikacji. Aktualna wersja jest zawsze pod tym adresem.</p>

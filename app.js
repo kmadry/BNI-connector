@@ -117,7 +117,7 @@ function bootUser(uid) {
 function teardown(reason) {
   sessGen++;
   // wygaśnięcie sesji nie kasuje niezapisanych zmian na urządzeniu; świadome wylogowanie czyści wszystko
-  if (reason !== 'expired') { try { localStorage.removeItem(KEY); localStorage.removeItem(MINE_KEY); localStorage.removeItem(ONB_KEY); } catch (e) {} }
+  if (reason !== 'expired' && reason !== 'signin') { try { localStorage.removeItem(KEY); localStorage.removeItem(MINE_KEY); localStorage.removeItem(ONB_KEY); } catch (e) {} }
   state = { cards: [], links: [], contacts: [], settings: {} }; currentId = null; remoteCards = new Set(); remoteLinks = new Set(); remoteContacts = new Set(); dirty = false; clearTimeout(pushTimer);
   KEY = 'bni-connector-v3:anon'; if (window.BNIPwa) window.BNIPwa.clearQr();
 }
@@ -272,7 +272,7 @@ $('#wl-2').addEventListener('submit', ev => {
   ev.preventDefault(); const name = $('#wl-name').value.trim(); if (!name) return;
   let c = getMine(); if (!c) { c = newCard(); state.cards.push(c); }
   c.name = name; c.phone = $('#wl-phone').value.trim(); c.email = $('#wl-email').value.trim();
-  c.shared = $('#wl-share').checked; if (c.shared && c.showLists === undefined) c.showLists = true;
+  c.shared = $('#wl-share').checked; if (c.shared) { c.sharedAt = new Date().toISOString(); if (c.showLists === undefined) c.showLists = true; }
   recordEvent('card_created', true);
   setMineId(c.id); finishOnb(); currentId = c.id; save(); show('cards'); toast('Gotowe. To Twoja wizytówka.');
 });
@@ -280,7 +280,7 @@ document.addEventListener('change', e => {
   const c = cur(); if (!c) return;
   if (e.target.id === 'sh-on') {
     if (e.target.checked && !confirm('Udostępnić wizytówkę przez kod QR?\n\nPublicznie zobaczą: imię, telefon, e-mail i (jeśli zostawisz włączone) polecane osoby.')) { e.target.checked = false; return; }
-    c.shared = e.target.checked; if (c.shared && c.showLists === undefined) c.showLists = true; save(); $('#sh-lists').disabled = !c.shared;
+    c.shared = e.target.checked; if (c.shared) { c.sharedAt = new Date().toISOString(); if (c.showLists === undefined) c.showLists = true; } save(); $('#sh-lists').disabled = !c.shared;
   }
   if (e.target.id === 'sh-lists') { c.showLists = e.target.checked; save(); }
 });
@@ -376,7 +376,7 @@ document.addEventListener('click', e => {
   const mr = e.target.closest('[data-rows-more]'); if (mr) { const k = mr.dataset.rowsMore; shown[k] += ROWS_STEP; return renderTable(k, k === 'offered' ? OFFERED_COLS : SOUGHT_COLS); }
   const ml = e.target.closest('[data-rows-less]'); if (ml) { const k = ml.dataset.rowsLess; shown[k] = ROWS_STEP; return renderTable(k, k === 'offered' ? OFFERED_COLS : SOUGHT_COLS); }
 });
-$('#btn-dup').onclick = () => { const c = JSON.parse(JSON.stringify(cur())); c.id = uid(); c.name += ' (kopia)'; state.cards.push(c); currentId = c.id; save(); renderEditor(); toast('Zduplikowano'); };
+$('#btn-dup').onclick = () => { if (isGuest()) { show('gate'); $('#gate-title').textContent = 'Kolejne wizytówki są dostępne po założeniu konta'; return; } const c = JSON.parse(JSON.stringify(cur())); c.id = uid(); c.name += ' (kopia)'; state.cards.push(c); currentId = c.id; save(); renderEditor(); toast('Zduplikowano'); };
 $('#btn-del').onclick = () => {
   if (!confirm('Usunąć tę wizytówkę wraz z jej połączeniami?')) return;
   state.cards = state.cards.filter(c => c.id !== currentId);
@@ -534,7 +534,7 @@ async function showQr(id) {
   const c = getCard(id); if (!c) return toast('Wybierz wizytówkę');
   if (!c.shared) {
     if (!confirm('Ta wizytówka jest prywatna.\n\nKod QR prowadzi do publicznej strony z jej danymi (imię, telefon, e-mail i, jeśli zostawisz włączone, listy polecanych osób). Każdy, kto zeskanuje kod lub pozna link, je zobaczy.\n\nUdostępnić tę wizytówkę?')) return;
-    c.shared = true; if (c.showLists === undefined) c.showLists = true; save(); await push();
+    c.shared = true; c.sharedAt = new Date().toISOString(); if (c.showLists === undefined) c.showLists = true; save(); await push();
     if (document.querySelector('#view-cards.active')) renderMine();
   }
   try {
@@ -582,6 +582,7 @@ async function importFromHash() {
     const tok = m[1];
     const json = /^[zr]\./.test(tok) ? await unpack(tok) : unb64(tok);
     const c = normCard(JSON.parse(json));
+    if (isGuest() && state.cards.length >= 1) { show('gate'); $('#gate-title').textContent = 'Dodawanie wizytówek z linku jest dostępne po założeniu konta'; return; }
     if (confirm(`Dodać wizytówkę „${c.name}” do swojej listy?`)) { c.id = uid(); c.shared = false; delete c.showLists; state.cards.push(c); currentId = c.id; save(); renderList(); }
   } catch (e) { toast('Niepoprawny link'); }
   history.replaceState(null, '', location.pathname + location.search);
@@ -599,20 +600,22 @@ document.addEventListener('click', e => {
   else if (e.target.closest('#btn-account') && window.BNIAuth) window.BNIAuth.openAccount();
 });
 // Dane z trybu bez konta przenosimy na nowe konto (nowe id, prywatne), żeby nic nie zginęło
-function adoptGuest(uid) {
-  let moved = 0;
-  for (const gid of new Set([localStorage.getItem('bni-guest-uid'), 'local'])) {
+function adoptGuest(uid, ask) {
+  let moved = 0; const sessAnon = !ask;
+  for (const gid of new Set([localStorage.getItem('bni-guest-prev'), localStorage.getItem('bni-guest-uid'), 'local'])) {
     if (!gid || gid === uid) continue;
     try {
       const raw = localStorage.getItem('bni-connector-v3:' + gid); if (!raw) continue;
       const g = JSON.parse(raw), map = {}, gm = localStorage.getItem('bni-my-card:' + gid);
+      if (!(g.cards || []).length) continue;
+      if (ask && !confirm('Na tym urządzeniu jest wizytówka z trybu bez konta (' + ((g.cards[0] || {}).name || 'bez nazwy') + '). Dodać ją do tego konta? Wybierz Anuluj, jeśli należy do kogoś innego.')) continue;
       for (const c0 of g.cards || []) { const c = normCard(c0); map[c0.id] = c.id = uid(); c.shared = false; delete c.showLists; state.cards.push(c); moved++; if (gm === c0.id && !getMineId()) setMineId(c.id); }
       for (const l of g.links || []) if (map[l.from] && map[l.to]) state.links.push({ id: uid(), from: map[l.from], to: map[l.to], note: l.note || '' });
       if (localStorage.getItem('bni-onboarded:' + gid)) localStorage.setItem(ONB_KEY, '1');
       ['bni-connector-v3:', 'bni-my-card:', 'bni-onboarded:'].forEach(p => localStorage.removeItem(p + gid));
     } catch (err) {}
   }
-  try { localStorage.removeItem('bni-guest-uid'); } catch (err) {}
+  try { localStorage.removeItem('bni-guest-prev'); if (!sessAnon) localStorage.removeItem('bni-guest-uid'); } catch (err) {}
   if (moved) { save(); toast('Przeniesiono Twoją wizytówkę na konto. Udostępnij ją ponownie, aby mieć kod QR.'); }
 }
 async function enterApp() {
@@ -623,7 +626,7 @@ async function enterApp() {
 }
 if (/^#(c|card)=/.test(location.hash) && window.BNIViewer) window.BNIViewer.run({ rest, rpc, unpack, normCard, okId, sanitizeLogo, logoHTML });
 else if (window.BNIAuth) window.BNIAuth.start({
-  onSession: sess => { bootUser(sess.user.id); if (!sess.user.anon) adoptGuest(sess.user.id); enterApp(); },
+  onSession: sess => { bootUser(sess.user.id); adoptGuest(sess.user.id, !sess.user.anon); enterApp(); },
   onSignedOut: reason => { teardown(reason); show('login'); window.BNIAuth.showLoginScreen(); },
   showLogin: () => show('login')
 });

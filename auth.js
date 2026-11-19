@@ -64,7 +64,7 @@ async function logout(all) { const t = token(); markReturning(); clear(); try { 
    Najpierw próbujemy anonimowego konta technicznego w Supabase (dane od razu trafiają do bazy i można je potem
    „podnieść” do pełnego konta). Gdy anonimowe logowanie jest wyłączone lub nie ma sieci, działamy lokalnie. */
 async function guestStart() {
-  try { const j = await api('signup', {}); if (j && j.access_token) { setSess(j); try { localStorage.setItem('bni-guest-uid', sess.user.id); } catch (e) {} if (cb.onSession) cb.onSession(sess); return; } } catch (e) {}
+  try { const j = await api('signup', {}); if (j && j.access_token) { setSess(j); try { const prev = localStorage.getItem('bni-guest-uid'); if (prev && prev !== sess.user.id) localStorage.setItem('bni-guest-prev', prev); localStorage.setItem('bni-guest-uid', sess.user.id); } catch (e) {} if (cb.onSession) cb.onSession(sess); return; } } catch (e) {}
   if (cb.onSession) cb.onSession({ user: { id: 'local', email: '', anon: true, local: true } });
 }
 // Zamiana gościa w pełne konto: e-mail + hasło + potwierdzenie linkiem z wiadomości
@@ -81,7 +81,8 @@ async function deleteAccount() {
     await ensure();
     const r = await fetch('api/account', { method: 'POST', headers: { Authorization: 'Bearer ' + token() } }), j = await r.json().catch(() => ({}));
     if (!r.ok) return j.error || 'Nie udało się usunąć konta.';
-    clear(); return true;
+    clear(); if (j.partial) return 'Usunęliśmy wszystkie Twoje dane. Samo konto (adres e-mail) usuniemy po wiadomości na adres z Polityki prywatności.';
+    return true;
   } catch (e) { return 'Brak połączenia. Spróbuj ponownie.'; }
 }
 
@@ -162,7 +163,7 @@ dlg.addEventListener('click', async e => {
   const id = e.target.id;
   if (id === 'ac-close' || e.target === dlg) dlg.close();
   else if (id === 'ac-logout') { dlg.close(); await logout(false); }
-  else if (id === 'ac-delete') { if (confirm('Usunąć konto razem ze wszystkimi wizytówkami, kontaktami i danymi? Tego nie da się cofnąć.')) { const r = await deleteAccount(); if (r === true) { dlg.close(); try { localStorage.removeItem(RET); Object.keys(localStorage).filter(k => /^bni-/.test(k)).forEach(k => localStorage.removeItem(k)); } catch (er) {} location.reload(); } else alert(r); } }
+  else if (id === 'ac-delete') { if (confirm('Usunąć konto razem ze wszystkimi wizytówkami, kontaktami i danymi? Tego nie da się cofnąć.')) { const r = await deleteAccount(); if (r === true) { dlg.close(); try { localStorage.removeItem(RET); Object.keys(localStorage).filter(k => /^bni-/.test(k)).forEach(k => localStorage.removeItem(k)); } catch (er) {} try { caches.keys().then(ks => ks.forEach(k => caches.delete(k))); } catch (er) {} location.reload(); } else alert(r); } }
   else if (id === 'ac-signin') { dlg.close(); try { localStorage.setItem(RET, '1'); } catch (er) {} if (cb.onSignedOut) cb.onSignedOut('signin'); }
   else if (id === 'ac-logout-all') { if (confirm('Wylogować ze wszystkich urządzeń?')) { dlg.close(); await logout(true); } }
   else if (id === 'ac-export') { const b = document.getElementById('btn-export'); if (b) b.click(); }

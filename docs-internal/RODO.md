@@ -33,7 +33,7 @@ Wniosek: ryzyko niskie do średniego; pełna DPIA nie jest wymagana, ale ocenę 
 - [x] Region Supabase: eu-central-1 (Frankfurt).
 - [ ] Zawrzeć lub zaakceptować DPA z Supabase, Vercel i dostawcą e-mail (SCC / DPF).
 - [ ] Dodać w Vercelu zmienną `SUPABASE_SERVICE_ROLE_KEY` (tylko jako zmienna środowiskowa, nigdy w kodzie), aby działało usuwanie konta.
-- [ ] Włączyć w Supabase: logowanie anonimowe, CAPTCHA, ochronę przed wyciekłymi hasłami, min. długość hasła 10, Site URL i Redirect URLs.
+- [ ] Włączyć w Supabase: logowanie anonimowe (uwaga: CAPTCHA przy rejestracji zablokuje konta gości, bo aplikacja nie przekazuje tokenu; zostaw wyłączoną albo dodaj obsługę), ochronę przed wyciekłymi hasłami, min. długość hasła 10, Site URL i Redirect URLs.
 - [ ] Włączyć pg_cron (Database → Extensions) i potwierdzić, że `purge_stale_guests` jest zaplanowana.
 - [ ] Zdecydować, czy potrzebny jest inspektor ochrony danych (zwykle nie dla małej usługi, ale sprawdzić kryteria art. 37).
 - [ ] Wyznaczyć adres do próśb osób, których dane dotyczą, i procedurę odpowiedzi w 1 miesiąc.
