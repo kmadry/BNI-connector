@@ -288,7 +288,7 @@ const pal = $('#palette'), palIn = $('#pal-input'), palList = $('#pal-list');
 let palItems = [], palSel = 0;
 function palBuild() {
   const q = palIn.value.trim().toLowerCase();
-  const cmds = [['Wizytówki', () => B.show('cards')], ['Kontakty', () => B.show('contacts')], ['Skanuj wizytówkę', () => B.show('scan')], ['Edytor', () => B.show('editor')], ['Podgląd i druk', () => B.show('preview')], ['Sieć połączeń', () => B.show('links')], ['Nowy kontakt', () => { B.show('contacts'); openForm(); }], ['Ustawienia logo', () => { B.show('cards'); const b = $('#btn-logo'); if (b) b.click(); }], ['Zmień motyw', toggleTheme]].filter(([t]) => t.toLowerCase().includes(q)).map(([t, f]) => ({ t, k: 'Polecenie', f }));
+  const cmds = [['Wizytówki', () => B.show('cards')], ['Kontakty', () => B.show('contacts')], ['Skanuj wizytówkę', () => B.show('scan')], ['Edytor', () => B.show('editor')], ['Podgląd i druk', () => B.show('preview')], ['Sieć połączeń', () => B.show('links')], ['Nowy kontakt', () => { B.show('contacts'); openForm(); }], ['Ustawienia logo', () => { B.show('cards'); const b = $('#btn-logo'); if (b) b.click(); }], ['Komfort: tekst, kontrast, motyw', () => window.BNIComfort && window.BNIComfort.open()]].filter(([t]) => t.toLowerCase().includes(q)).map(([t, f]) => ({ t, k: 'Polecenie', f }));
   const cards = B.state.cards.filter(c => (c.name || '').toLowerCase().includes(q)).slice(0, 5).map(c => ({ t: c.name || 'Bez nazwy', k: 'Wizytówka', id: c.id, f: () => B.show('editor') }));
   const cts = q ? list().filter(c => matches(c, q)).slice(0, 8).map(c => ({ t: fullName(c), k: 'Kontakt', f: () => { B.show('contacts'); openForm(c); } })) : [];
   palItems = cmds.concat(cards, cts); palSel = 0; palDraw();
@@ -326,8 +326,6 @@ function toggleTheme() {
   const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   const next = cur === 'dark' ? 'light' : 'dark'; applyTheme(next); try { localStorage.setItem('bni-theme', next); } catch (e) {}
 }
-try { applyTheme(localStorage.getItem('bni-theme')); } catch (e) {}
-$('#btn-theme').onclick = toggleTheme;
 
 /* ---------- integracja z widokami ---------- */
 new MutationObserver(() => { if ($('#view-editor').classList.contains('active')) renderTray(); }).observe($('#view-editor'), { attributes: true, attributeFilter: ['class'] });

@@ -41,7 +41,7 @@ function toast(msg) { const sn = document.getElementById('snack'); if (sn) sn.cl
 const CFG = window.BNI_CONFIG || {};
 const cloud = !!(CFG.url && CFG.key);
 const H = { apikey: CFG.key, Authorization: 'Bearer ' + CFG.key, 'Content-Type': 'application/json' };
-let remoteContacts = new Set(), remoteCards = new Set(), remoteLinks = new Set(), dirty = false, pushTimer = null, pushing = Promise.resolve();
+let guardHit = false, remoteContacts = new Set(), remoteCards = new Set(), remoteLinks = new Set(), dirty = false, pushTimer = null, pushing = Promise.resolve();
 function setSync(t, cls) { const el = $('#sync'); if (el) { el.textContent = t; el.className = cls || ''; } }
 async function rest(path, opt = {}) {
   const r = await fetch(CFG.url + '/rest/v1/' + path, Object.assign({ headers: H }, opt));
@@ -81,18 +81,21 @@ function push() {
       const up = { method: 'POST', headers: Object.assign({}, H, { Prefer: 'resolution=merge-duplicates,return=minimal' }) };
       const ids = new Set(snap.cards.map(c => c.id)), lids = new Set(snap.links.map(l => l.id)), kids = new Set((snap.contacts || []).map(c => c.id));
       const delK = [...remoteContacts].filter(i => !kids.has(i));
+      if (delK.length > 5) { guardHit = true; delK.length = 0; }
       if (delK.length) await rest('bni_contacts?id=in.(' + delK.map(encodeURIComponent).join(',') + ')', { method: 'DELETE' });
       if (kids.size) await rest('bni_contacts?on_conflict=id', Object.assign({ body: JSON.stringify(snap.contacts.map(c => ({ id: c.id, data: c, updated_at: new Date().toISOString() }))) }, up));
       remoteContacts = kids;
       if (snap.settings && snap.settings.logo) await rest('bni_settings?on_conflict=id', Object.assign({ body: JSON.stringify([{ id: 'logo', data: snap.settings.logo, updated_at: new Date().toISOString() }]) }, up));
       const delL = [...remoteLinks].filter(i => !lids.has(i)), delC = [...remoteCards].filter(i => !ids.has(i));
+      if (delL.length > 5) { guardHit = true; delL.length = 0; }
       if (delL.length) await rest('bni_links?id=in.(' + delL.map(encodeURIComponent).join(',') + ')', { method: 'DELETE' });
+      if (delC.length > 1) { guardHit = true; delC.length = 0; }
       if (delC.length) await rest('bni_cards?id=in.(' + delC.map(encodeURIComponent).join(',') + ')', { method: 'DELETE' });
       if (snap.cards.length) await rest('bni_cards?on_conflict=id', Object.assign({ body: JSON.stringify(snap.cards.map(c => ({ id: c.id, data: c, updated_at: new Date().toISOString() }))) }, up));
       const ok = snap.links.filter(l => ids.has(l.from) && ids.has(l.to));
       if (ok.length) await rest('bni_links?on_conflict=id', Object.assign({ body: JSON.stringify(ok.map(l => ({ id: l.id, from_id: l.from, to_id: l.to, note: l.note || '' }))) }, up));
       remoteCards = ids; remoteLinks = new Set(ok.map(l => l.id));
-      setSync('zapisano', 'ok');
+      setSync(guardHit ? 'zatrzymano masowe usuwanie (dane w bazie bezpieczne)' : 'zapisano', guardHit ? 'err' : 'ok'); guardHit = false;
     } catch (e) { dirty = true; setSync('błąd zapisu', 'err'); }
   });
   return pushing;
@@ -133,7 +136,8 @@ const cur = () => getCard(currentId);
 function show(view) {
   $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
   const NAV = { editor: 'cards', preview: 'cards', scan: 'contacts' };
-  $$('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.view === (NAV[view] || view)));
+  const own = [...document.querySelectorAll('#tabs button')].some(b => b.dataset.view === view && b.offsetParent !== null);
+  $$('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.view === (own ? view : (NAV[view] || view))));
   if (view === 'cards') renderList();
   if (view === 'editor') renderEditor();
   if (view === 'preview') renderPreview();

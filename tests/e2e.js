@@ -104,11 +104,76 @@ process.on('exit', () => {});
   ok('mobile: brak poziomego przewijania', overflow <= 1, 'nadmiar ' + overflow + 'px');
   await m.screenshot({ path: OUT + '/m1-wizytowki.png' });
   for (const v of ['cards', 'contacts', 'links']) { await m.click('#tabs [data-view=' + v + ']', { timeout: 5000 }); await m.waitForTimeout(150); if (!(await m.locator('#view-' + v + '.active').count())) ok('mobile: nawigacja ' + v, false); }
-  ok('mobile: 3 pozycje nawigacji, wszystkie klikalne', (await m.locator('#tabs button').count()) === 3);
+  ok('mobile: 3 pozycje nawigacji, wszystkie klikalne', (await m.locator('#tabs button:visible').count()) === 3);
   await m.click('#tabs [data-view=contacts]'); await m.waitForTimeout(400); await m.screenshot({ path: OUT + '/m2-kontakty.png' });
   ok('mobile: kontakty bez przewijania poziomego', (await m.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 1);
   await m.click('#tabs [data-view=cards]'); await m.click('.tile:has-text("Adam Przykładowy")'); await m.waitForTimeout(500); await m.evaluate(() => window.BNI.setStep(3)); await m.waitForTimeout(300); await m.screenshot({ path: OUT + '/m3-edytor.png' });
   ok('mobile: edytor bez przewijania poziomego', (await m.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 1);
+
+  // zabezpieczenie synchronizacji: niepełny stan jednego okna nie może skasować bazy
+  const gx = await b.newContext({ viewport: { width: 1000, height: 800 } }); const gp = await gx.newPage(); gp.on('dialog', d => d.accept());
+  await gp.goto(base); await gp.waitForFunction(() => document.querySelector('#sync') && /OK|zapisano/.test(document.querySelector('#sync').textContent), null, { timeout: 15000 }).catch(() => {}); await gp.waitForTimeout(500);
+  const remoteCount = () => gp.evaluate(async () => { const C = window.BNI_CONFIG; const r = await fetch(C.url + '/rest/v1/bni_cards?select=id', { headers: { apikey: C.key, Authorization: 'Bearer ' + C.key } }); return (await r.json()).length; });
+  const cntBefore = await remoteCount();
+  await gp.evaluate(() => { window.BNI.state.cards = []; window.BNI.state.links = []; window.BNI.save(); }); await gp.waitForTimeout(3000);
+  const cntAfter = await remoteCount();
+  ok('synchronizacja: wyczyszczenie stanu w jednym oknie NIE kasuje bazy', cntBefore >= 4 && cntAfter === cntBefore, cntBefore + ' → ' + cntAfter);
+  ok('synchronizacja: użytkownik widzi komunikat o zatrzymaniu', /zatrzymano/.test(await gp.textContent('#sync')));
+  if (cntAfter < cntBefore) { await gp.reload(); await gp.waitForTimeout(1500); await gp.evaluate(() => document.querySelector('#btn-demo').click()); await gp.waitForTimeout(3000); }
+  await gx.close();
+
+  // Komfort: panel ustawień sensorycznych (osobny kontekst, żeby nie zmieniać pozostałych testów)
+  const cx = await b.newContext({ viewport: { width: 1440, height: 900 } }); const c = await cx.newPage(); c.on('pageerror', e => errs.push('komfort: ' + e.message)); c.on('dialog', d => d.accept());
+  await c.goto(base); await c.waitForFunction(() => document.querySelector('#sync') && document.querySelector('#sync').textContent.trim().length > 0, null, { timeout: 15000 }).catch(() => {}); await c.waitForTimeout(500);
+  await c.evaluate(() => window.BNI.show('cards'));
+  const D = () => c.evaluate(() => Object.assign({}, document.documentElement.dataset));
+  const css = v => c.evaluate(n => getComputedStyle(document.documentElement).getPropertyValue(n).trim(), v);
+  const dx = () => c.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  ok('komfort: domyślnie Prosty, brak animacji, łagodny kontrast', (await D()).detail === 'simple' && (await D()).motion === 'off' && (await D()).contrast === 'soft' && (await c.evaluate(() => getComputedStyle(document.querySelector('button')).transitionDuration)) === '0s');
+  await c.click('#btn-theme'); await c.waitForSelector('#comfort-dialog[open]');
+  ok('komfort: panel ma 8 ustawień w 3 grupach', (await c.locator('#comfort-dialog .cf-row').count()) === 8 && (await c.locator('#comfort-dialog .cf-group').count()) === 3);
+  await c.click('#comfort-dialog [data-k=text][data-v="150"]');
+  ok('komfort: tekst 150% bez poziomego przewijania (komputer)', (await D()).text === '150' && (await dx()) <= 1);
+  await c.click('#comfort-dialog [data-k=contrast][data-v=high]');
+  ok('komfort: kontrast wysoki (czysta czerń na bieli)', (await css('--text')) === '#000' && (await css('--paper')) === '#fff');
+  await c.click('#comfort-dialog [data-k=contrast][data-v=soft]'); await c.click('#comfort-dialog [data-k=theme][data-v=evening]');
+  ok('komfort: motyw wieczorny (ciepłe tło, bez czystej czerni)', (await D()).theme === 'evening' && (await c.evaluate(() => getComputedStyle(document.body).backgroundColor)) === 'rgb(28, 23, 17)');
+  await c.click('#comfort-dialog [data-k=caps][data-v=off]');
+  await c.evaluate(() => window.BNI.show('preview')); await c.waitForSelector('.panel h3', { timeout: 8000 });
+  const capsApp = await c.evaluate(() => getComputedStyle(document.querySelector('.rail .brand-name')).textTransform);
+  const capsCard = await c.evaluate(() => getComputedStyle(document.querySelector('.panel h3')).textTransform);
+  ok('komfort: bez wersalików w aplikacji, panele wizytówki bez zmian', capsApp === 'none' && capsCard === 'uppercase', capsApp + ' / ' + capsCard);
+  await c.click('#comfort-dialog [data-k=font][data-v=readable]');
+  await c.evaluate(() => document.fonts.load("16px 'Atkinson Hyperlegible'")); await c.waitForTimeout(300);
+  ok('komfort: czcionka czytelna (Atkinson Hyperlegible załadowana)', (await c.evaluate(() => getComputedStyle(document.body).fontFamily)).includes('Atkinson') && (await c.evaluate(() => document.fonts.check("16px 'Atkinson Hyperlegible'"))));
+  await c.click('#comfort-dialog [data-k=density][data-v=standard]');
+  ok('komfort: odstępy Standard zmieniają układ', (await D()).density === 'standard');
+  await c.click('#comfort-dialog [data-k=detail][data-v=full]');
+  ok('komfort: poziom Pełny pokazuje 6 zakładek', (await c.locator('#tabs button:visible').count()) === 6);
+  await c.click('#comfort-dialog [data-k=motion][data-v=on]');
+  ok('komfort: animacje można włączyć', (await D()).motion === 'on');
+  await c.click('#cf-close'); await c.reload(); await c.waitForTimeout(1500);
+  const kept = await D();
+  ok('komfort: ustawienia zostają po odświeżeniu', kept.text === '150' && kept.theme === 'evening' && kept.font === 'readable' && kept.caps === 'off' && kept.detail === 'full');
+  await c.evaluate(() => window.BNI.show('cards')); await c.click('#btn-theme'); await c.waitForSelector('#comfort-dialog[open]'); await c.click('#cf-reset');
+  const rst = await D();
+  ok('komfort: „Przywróć domyślne” przywraca wszystko', rst.text === '100' && rst.theme === undefined && rst.font === 'plex' && rst.caps === 'on' && rst.detail === 'simple' && rst.motion === 'off' && rst.contrast === 'soft' && rst.density === 'spacious');
+  await cx.close();
+  // tekst 150% na telefonie: żaden widok nie może się rozjechać poziomo
+  const mx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }); const mm = await mx.newPage(); mm.on('pageerror', e => errs.push('komfort mobile: ' + e.message)); mm.on('dialog', d => d.accept());
+  await mm.goto(base); await mm.waitForTimeout(2000); await mm.evaluate(() => window.BNIComfort.set('text', '150')); await mm.waitForTimeout(300);
+  const over = [];
+  for (const [v, st] of [['cards'], ['contacts'], ['links'], ['editor', 1], ['editor', 3], ['editor', 5], ['preview']]) {
+    await mm.evaluate(([vv, ss]) => { window.BNI.setCurrent('demo-adam'); window.BNI.show(vv); if (ss) window.BNI.setStep(ss); }, [v, st]); await mm.waitForTimeout(350);
+    const d = await mm.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth); if (d > 1) over.push(v + (st ? ':' + st : '') + '=' + d + 'px');
+  }
+  ok('komfort: tekst 150% na telefonie bez poziomego przewijania (7 widoków)', over.length === 0, over.join(', '));
+  await mm.screenshot({ path: OUT + '/c1-tekst150-telefon.png' });
+  await mm.evaluate(() => window.BNI.show('cards')); await mm.click('#btn-theme'); await mm.waitForSelector('#comfort-dialog[open]');
+  const bb = await mm.locator('#comfort-dialog').boundingBox(); const vw = await mm.evaluate(() => innerWidth);
+  ok('komfort: panel mieści się na ekranie telefonu przy tekście 150%', bb.x >= -1 && bb.x + bb.width <= vw + 1, JSON.stringify(bb));
+  await mm.screenshot({ path: OUT + '/c2-panel-telefon.png' });
+  await mx.close();
 
   // widok publiczny wizytówki (cel kodu QR): tylko wizytówka + polecajki, bez zapisu do bazy
   const vctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
@@ -135,7 +200,7 @@ process.on('exit', () => {});
   ok('widok QR: brak błędów JS/CSP', verrs.length === 0, verrs.join(' | '));
   // prowadzenie: następny krok, prowadzony edytor w 5 krokach, krótkie listy
   await p.evaluate(() => window.BNI.show('cards')); await p.waitForTimeout(300);
-  ok('nawigacja: 3 pozycje zamiast 6', (await p.locator('#tabs button').count()) === 3);
+  ok('nawigacja: 3 widoczne pozycje zamiast 6', (await p.locator('#tabs button:visible').count()) === 3);
   ok('start: jedna sugestia „Następny krok”', (await p.locator('#next-step .next').count()) === 1 && (await p.locator('#next-go').count()) === 1);
   await p.click('.tile:has-text("Adam Przykładowy")'); await p.evaluate(() => window.BNI.setStep(3)); await p.waitForTimeout(300);
   const rows5 = await p.locator('#tbl-offered tr[data-i]').count();
