@@ -470,3 +470,39 @@ html:not([data-detail=full]) #tabs .adv{display:none}
 .form{grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr))}
 .more-pop{min-width:0;max-width:calc((100vw - 24px) / var(--z,1))}
 .filt .more-pop{min-width:0;width:min(340px,calc((100vw - 24px) / var(--z,1)))}
+
+
+/* =====================================================================
+   Start: wizytówka główna + kod QR, onboarding
+   ===================================================================== */
+.mine{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:48px;align-items:center;margin:0 0 56px}
+.mine-card{overflow:hidden;line-height:0}
+.mine-card .panel{margin:0;border-bottom:0;line-height:1.15}
+.mine-share{display:flex;flex-direction:column;gap:18px}
+.mine-qr{background:#fff;padding:18px;border:1px solid var(--rule);width:min(280px,100%);line-height:0}
+.mine-qr svg{width:100%;height:auto;display:block}
+.mine-qr:empty{min-height:180px;background:var(--surface-2)}
+.mine-cap{margin:0;color:var(--muted);font-size:16px;max-width:36ch}
+.mine-act{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.mine-empty{grid-template-columns:1fr auto;padding:28px 32px;background:var(--surface);border:1px solid var(--rule);border-left:10px solid var(--accent);gap:24px}
+.mine-empty p{margin:6px 0 0;font:700 clamp(22px,3vw,28px)/1.2 var(--serif)}
+.all-cards{margin-top:8px}
+.all-cards>summary{cursor:pointer;list-style:none;padding:18px 0;font:600 16px var(--sans);color:var(--muted);border-top:1px solid var(--rule)}
+.all-cards>summary::-webkit-details-marker{display:none}
+.all-cards>summary::before{content:"+ ";font-family:var(--mono)}
+.all-cards[open]>summary::before{content:"\2212 "}
+.all-cards .grid{margin-top:12px}
+
+.welcome{min-height:calc(100vh - 160px);display:flex;align-items:center;justify-content:center}
+.wl-panel{width:100%;max-width:560px}
+.wl-panel h1{font:700 clamp(34px,6vw,54px)/1.05 var(--serif);letter-spacing:-.03em;margin:0 0 16px}
+.wl-mark{width:64px;height:64px;margin-bottom:28px;display:block}
+.wl-mark rect{fill:none;stroke:var(--rule);stroke-width:2.5}.wl-mark text{fill:var(--accent);font:700 italic 24px var(--serif)}
+.wl-actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:36px}
+.wl-actions .primary{min-width:200px;justify-content:center}
+body.welcome .rail{display:none}
+body.welcome .app{display:block}
+body.welcome main{padding-top:48px}
+
+@media (max-width:900px){.mine{grid-template-columns:1fr;gap:28px}.mine-empty{grid-template-columns:1fr}.mine-empty .primary{width:100%}}
+@media (max-width:820px){.mine-act .primary{width:100%;justify-content:center}.wl-actions .primary{width:100%}.welcome{min-height:calc(100vh - 140px)}}

@@ -18,6 +18,8 @@ process.on('exit', () => {});
 (async () => {
   const port = srv.address().port, base = `http://localhost:${port}/index.html`;
   const b = await chromium.launch();
+  const _nc = b.newContext.bind(b); b.rawContext = _nc;
+  b.newContext = async o => { const c = await _nc(o); await c.addInitScript(() => { try { localStorage.setItem('bni-onboarded', '1'); } catch (e) {} }); return c; };
   const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
   const p = await ctx.newPage();
   globalThis.errs = []; const errs = globalThis.errs; p.on('pageerror', e => errs.push(e.message)); p.on('console', m => { if (/Content Security Policy|violates/i.test(m.text())) errs.push('CSP: ' + m.text().slice(0, 160)); }); p.on('dialog', d => d.accept());
@@ -35,7 +37,7 @@ process.on('exit', () => {});
   await p.fill('#ct-search', ''); await p.screenshot({ path: OUT + '/02-kontakty.png' });
 
   // edytor + przeciąganie
-  await p.click('#tabs [data-view=cards]'); await p.click('.tile:has-text("Adam Przykładowy")'); await p.evaluate(() => window.BNI.setStep(3)); await p.waitForSelector('#ct-tray .tc');
+  await p.click('#tabs [data-view=cards]'); await p.evaluate(() => window.BNI.openEditor('demo-adam')); await p.evaluate(() => window.BNI.setStep(3)); await p.waitForSelector('#ct-tray .tc');
   ok('tacka widoczna w edytorze', await p.isVisible('#ct-tray'));
   const before = await p.inputValue('#tbl-offered tr[data-i="2"] input[data-k="name"]');
   const names = (await p.locator('#ct-tray .tc-main b').allTextContents()).map(x => x.trim());
@@ -73,11 +75,11 @@ process.on('exit', () => {});
   await p.evaluate(() => window.BNI.setStep(4)); await p.waitForSelector('#ct-tray .tray-for'); await p.locator('#ct-tray .tc [data-add]').nth(1).click(); await p.waitForTimeout(300);
   ok('przycisk +S dodaje kontakt do poszukiwanych', (await p.inputValue('#tbl-sought tr[data-i="0"] input[data-k="name"]')).length > 0);
   await p.evaluate(() => { window.BNI.setStep(5); document.querySelector('#btn-del').click(); }); await p.waitForTimeout(500);
-  await p.click('#tabs [data-view=cards]'); await p.click('.tile:has-text("Adam Przykładowy")'); await p.evaluate(() => window.BNI.setStep(3)); await p.waitForSelector('#ct-tray .tc');
+  await p.click('#tabs [data-view=cards]'); await p.evaluate(() => window.BNI.openEditor('demo-adam')); await p.evaluate(() => window.BNI.setStep(3)); await p.waitForSelector('#ct-tray .tc');
 
   // paleta
   await p.keyboard.press('Control+k'); await p.fill('#pal-input', 'kontakty'); await p.keyboard.press('Enter'); await p.waitForTimeout(300);
-  ok('paleta poleceń otwiera widok', await p.locator('#view-contacts.active').count() === 1);
+  ok('paleta poleceń otwiera widok', await p.locator('#view-contacts.active').count() === 1, JSON.stringify(await p.evaluate(() => ({ active: [...document.querySelectorAll('.view.active')].map(v => v.id), items: [...document.querySelectorAll('#pal-list li')].map(l => l.textContent.trim()), pal: document.querySelector('#palette').open, step: window.BNI.getStep() }))));
 
   // skan
   await p.evaluate(() => window.BNI.show('scan')); await p.waitForTimeout(300);
@@ -107,7 +109,7 @@ process.on('exit', () => {});
   ok('mobile: 3 pozycje nawigacji, wszystkie klikalne', (await m.locator('#tabs button:visible').count()) === 3);
   await m.click('#tabs [data-view=contacts]'); await m.waitForTimeout(400); await m.screenshot({ path: OUT + '/m2-kontakty.png' });
   ok('mobile: kontakty bez przewijania poziomego', (await m.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 1);
-  await m.click('#tabs [data-view=cards]'); await m.click('.tile:has-text("Adam Przykładowy")'); await m.waitForTimeout(500); await m.evaluate(() => window.BNI.setStep(3)); await m.waitForTimeout(300); await m.screenshot({ path: OUT + '/m3-edytor.png' });
+  await m.click('#tabs [data-view=cards]'); await m.evaluate(() => window.BNI.openEditor('demo-adam')); await m.waitForTimeout(500); await m.evaluate(() => window.BNI.setStep(3)); await m.waitForTimeout(300); await m.screenshot({ path: OUT + '/m3-edytor.png' });
   ok('mobile: edytor bez przewijania poziomego', (await m.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 1);
 
   // zabezpieczenie synchronizacji: niepełny stan jednego okna nie może skasować bazy
@@ -121,6 +123,36 @@ process.on('exit', () => {});
   ok('synchronizacja: użytkownik widzi komunikat o zatrzymaniu', /zatrzymano/.test(await gp.textContent('#sync')));
   if (cntAfter < cntBefore) { await gp.reload(); await gp.waitForTimeout(1500); await gp.evaluate(() => document.querySelector('#btn-demo').click()); await gp.waitForTimeout(3000); }
   await gx.close();
+
+  // onboarding i ekran startowy z główną wizytówką i kodem QR
+  const ob = await b.rawContext({ viewport: { width: 1280, height: 800 } }); const op = await ob.newPage(); op.on('pageerror', e => errs.push('onboarding: ' + e.message)); op.on('dialog', d => d.accept());
+  await op.goto(base); await op.waitForSelector('#view-welcome.active', { timeout: 10000 });
+  ok('onboarding: pierwsze uruchomienie pokazuje powitanie bez menu', !(await op.locator('.rail').isVisible()) && (await op.locator('#wl-start').isVisible()));
+  ok('onboarding: ekran powitalny ma jedną akcję główną i „Pomiń”', (await op.locator('#view-welcome button:visible').count()) === 2);
+  await op.click('#wl-start'); await op.waitForSelector('#wl-2:not([hidden])');
+  ok('onboarding: „Dalej” czeka na imię', await op.locator('#wl-next').isDisabled());
+  await op.fill('#wl-name', 'Test Onboarding'); await op.fill('#wl-phone', '+48 600 000 999'); await op.fill('#wl-email', 'onb@example.com');
+  await op.click('#wl-next'); await op.waitForSelector('#view-cards.active #mine .mine-card');
+  ok('start: główna wizytówka z danymi z onboardingu', /Test/i.test(await op.textContent('#mine .mine-card .nm')) && /onb@example.com/.test(await op.textContent('#mine .mine-card')));
+  await op.waitForSelector('#mine-qr svg', { timeout: 8000 });
+  ok('start: duży kod QR do podzielenia się', (await op.locator('#mine-qr svg').count()) === 1 && (await op.locator('#mine-qr').boundingBox()).width >= 160);
+  ok('start: akcje: pełny ekran QR, udostępnij, edytuj', (await op.locator('#mine [data-qr-id]').isVisible()) && (await op.locator('#mine-share').isVisible()) && (await op.locator('#mine [data-edit-mine]').isVisible()));
+  await op.click('#mine [data-qr-id]'); await op.waitForSelector('#qr-modal[open]');
+  ok('start: „Pokaż kod QR” otwiera duży kod z linkiem do wizytówki', /#c=/.test(await op.textContent('#qr-url')));
+  await op.click('#qr-close'); await op.reload(); await op.waitForTimeout(1800);
+  ok('onboarding: po odświeżeniu nie wraca, wizytówka główna zostaje', (await op.locator('#view-welcome.active').count()) === 0 && (await op.locator('#mine .mine-card').count()) === 1);
+  await op.evaluate(() => { const B = window.BNI; B.state.cards = B.state.cards.filter(c => c.name !== 'Test Onboarding'); B.save(); }); await op.waitForTimeout(2500);
+  await ob.close();
+  const sk = await b.rawContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }); const sp = await sk.newPage(); sp.on('dialog', d => d.accept());
+  await sp.goto(base); await sp.waitForSelector('#view-welcome.active'); await sp.click('#wl-skip'); await sp.waitForSelector('#view-cards.active');
+  ok('onboarding: „Pomiń” prowadzi na start z zaproszeniem do utworzenia wizytówki', (await sp.locator('#mine .mine-empty').count()) === 1 && (await sp.locator('#mine-create').isVisible()));
+  ok('onboarding: telefon bez poziomego przewijania', (await sp.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 1);
+  await sp.screenshot({ path: OUT + '/o2-pomin-telefon.png' }); await sk.close();
+  const hx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }); await hx.addInitScript(() => { try { localStorage.setItem('bni-my-card', 'demo-adam'); } catch (e) {} });
+  const hp = await hx.newPage(); hp.on('dialog', d => d.accept()); await hp.goto(base); await hp.waitForSelector('#mine-qr svg', { timeout: 12000 }); await hp.waitForTimeout(400);
+  ok('start (telefon): wizytówka i QR bez poziomego przewijania', (await hp.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 1);
+  ok('start (telefon): lista pozostałych wizytówek schowana', !(await hp.locator('#all-cards').evaluate(d => d.open)));
+  await hp.screenshot({ path: OUT + '/o1-start-telefon.png' }); await hx.close();
 
   // Komfort: panel ustawień sensorycznych (osobny kontekst, żeby nie zmieniać pozostałych testów)
   const cx = await b.newContext({ viewport: { width: 1440, height: 900 } }); const c = await cx.newPage(); c.on('pageerror', e => errs.push('komfort: ' + e.message)); c.on('dialog', d => d.accept());
@@ -202,7 +234,7 @@ process.on('exit', () => {});
   await p.evaluate(() => window.BNI.show('cards')); await p.waitForTimeout(300);
   ok('nawigacja: 3 widoczne pozycje zamiast 6', (await p.locator('#tabs button:visible').count()) === 3);
   ok('start: jedna sugestia „Następny krok”', (await p.locator('#next-step .next').count()) === 1 && (await p.locator('#next-go').count()) === 1);
-  await p.click('.tile:has-text("Adam Przykładowy")'); await p.evaluate(() => window.BNI.setStep(3)); await p.waitForTimeout(300);
+  await p.evaluate(() => window.BNI.openEditor('demo-adam')); await p.evaluate(() => window.BNI.setStep(3)); await p.waitForTimeout(300);
   const rows5 = await p.locator('#tbl-offered tr[data-i]').count();
   ok('lista „Polecam”: tylko 5 wierszy naraz', rows5 === 5 && (await p.locator('[data-rows-more=offered]').count()) === 1, rows5 + ' wierszy');
   await p.click('[data-rows-more=offered]'); await p.waitForTimeout(150);

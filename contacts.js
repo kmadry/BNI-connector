@@ -301,7 +301,7 @@ palIn.addEventListener('input', palBuild);
 palIn.addEventListener('keydown', e => {
   if (e.key === 'ArrowDown') { palSel = Math.min(palSel + 1, palItems.length - 1); palDraw(); e.preventDefault(); }
   else if (e.key === 'ArrowUp') { palSel = Math.max(palSel - 1, 0); palDraw(); e.preventDefault(); }
-  else if (e.key === 'Enter') { palRun(palSel); }
+  else if (e.key === 'Enter') { e.preventDefault(); palRun(palSel); }
 });
 palList.addEventListener('click', e => { const li = e.target.closest('li[data-i]'); if (li) palRun(+li.dataset.i); });
 pal.addEventListener('click', e => { if (e.target === pal) pal.close(); });

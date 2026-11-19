@@ -27,7 +27,7 @@ const MEASURE = () => {
 };
 
 (async () => {
-  const b = await chromium.launch(); const base = 'http://localhost:' + srv.address().port + '/index.html';
+  const b = await chromium.launch(); const _nc = b.newContext.bind(b); b.newContext = async o => { const c = await _nc(o); await c.addInitScript(() => { try { localStorage.setItem('bni-onboarded', '1'); localStorage.setItem('bni-my-card', 'demo-adam'); } catch (e) {} }); return c; }; const base = 'http://localhost:' + srv.address().port + '/index.html';
   const res = {};
   for (const [vp, dims] of [['telefon 390', { width: 390, height: 844 }], ['komputer 1440', { width: 1440, height: 900 }]]) {
     const ctx = await b.newContext({ viewport: dims, deviceScaleFactor: 1, isMobile: dims.width < 600, hasTouch: dims.width < 600 });

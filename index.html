@@ -38,6 +38,29 @@
 </aside>
 
 <main>
+  <!-- POWITANIE (pierwsze uruchomienie) -->
+  <section id="view-welcome" class="view">
+    <div class="welcome">
+      <div id="wl-1" class="wl-panel">
+        <svg class="wl-mark" viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="36" height="36"/><text x="20" y="29" text-anchor="middle">R</text></svg>
+        <h1>Cześć! Zrobimy Twoją wizytówkę.</h1>
+        <p class="step-help">To zajmie minutę. Potem pokażesz ją innym jednym kodem QR.</p>
+        <div class="wl-actions"><button class="primary" id="wl-start">Zaczynamy</button><button class="back" id="wl-skip">Pomiń, rozejrzę się</button></div>
+      </div>
+      <form id="wl-2" class="wl-panel" hidden>
+        <p class="step-count">Krok 2 z 2</p>
+        <h1>Jak się nazywasz?</h1>
+        <p class="step-help">Reszta danych jest dobrowolna. Zawsze możesz ją później zmienić.</p>
+        <div class="form">
+          <label>Imię i nazwisko <input id="wl-name" autocomplete="name" required></label>
+          <label>Telefon <input id="wl-phone" type="tel" autocomplete="tel"></label>
+          <label>E-mail <input id="wl-email" type="email" autocomplete="email"></label>
+        </div>
+        <div class="wl-actions"><button type="button" id="wl-back">Wstecz</button><button class="primary" id="wl-next" disabled>Pokaż moją wizytówkę</button></div>
+      </form>
+    </div>
+  </section>
+
   <!-- LISTA -->
   <section id="view-cards" class="view active">
     <header class="page-head"><div><h1>Moje wizytówki</h1><p class="sub">Tu tworzysz i drukujesz swoje wizytówki.</p></div>
@@ -52,8 +75,9 @@
         </div></details>
       </div>
     </header>
+    <div id="mine"></div>
     <div id="next-step"></div>
-    <div id="card-list" class="grid"></div>
+    <details class="all-cards" id="all-cards"><summary>Wszystkie wizytówki</summary><div id="card-list" class="grid"></div></details>
   </section>
 
   <!-- KONTAKTY -->
@@ -144,6 +168,7 @@
           <button class="primary" id="btn-to-preview">Podgląd i druk</button>
           <button data-qr-open>Pokaż kod QR</button>
           <details class="more"><summary class="btn">Więcej</summary><div class="more-pop">
+            <button id="btn-main">Ustaw jako główną</button>
             <button id="btn-dup">Duplikuj wizytówkę</button>
             <button class="danger" id="btn-del">Usuń wizytówkę</button>
           </div></details>

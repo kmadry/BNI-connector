@@ -135,6 +135,8 @@ const cur = () => getCard(currentId);
 /* ---------- widoki ---------- */
 function show(view) {
   $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
+  document.body.classList.toggle('welcome', view === 'welcome');
+  if (view === 'welcome') renderWelcome();
   const NAV = { editor: 'cards', preview: 'cards', scan: 'contacts' };
   const own = [...document.querySelectorAll('#tabs button')].some(b => b.dataset.view === view && b.offsetParent !== null);
   $$('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.view === (own ? view : (NAV[view] || view))));
@@ -150,7 +152,9 @@ $('#tabs').addEventListener('click', e => { const b = e.target.closest('button')
 
 /* ---------- lista ---------- */
 function renderList() {
-  renderNext();
+  renderMine(); renderNext();
+  const ac = $('#all-cards'); ac.querySelector('summary').textContent = 'Wszystkie wizytówki (' + state.cards.length + ')';
+  if (state.cards.length && ac.dataset.init !== '1') { ac.open = !getMine(); ac.dataset.init = '1'; }
   const el = $('#card-list');
   if (!state.cards.length) { el.innerHTML = '<div class="empty" style="grid-column:1/-1"><h3>Nie masz jeszcze wizytówek</h3><p>Utwórz pierwszą albo wczytaj przykładowe dane.</p></div>'; return; }
   el.innerHTML = state.cards.map(c => {
@@ -180,6 +184,58 @@ $('#btn-demo').onclick = async () => {
 };
 
 /* ---------- edytor ---------- */
+/* ---------- wizytówka główna, onboarding, udostępnianie ---------- */
+const MINE_KEY = 'bni-my-card', ONB_KEY = 'bni-onboarded';
+const getMineId = () => { try { return localStorage.getItem(MINE_KEY); } catch (e) { return null; } };
+const setMineId = id => { try { localStorage.setItem(MINE_KEY, id); } catch (e) {} };
+const getMine = () => { const id = getMineId(); return id ? getCard(id) : null; };
+const finishOnb = () => { try { localStorage.setItem(ONB_KEY, '1'); } catch (e) {} };
+function fitMine() {
+  const p = document.querySelector('#mine .mine-card .panel'); if (!p) return;
+  p.style.zoom = ''; const w = p.parentElement.clientWidth, pw = p.offsetWidth;
+  if (w && pw) p.style.zoom = String(Math.min(1.35, w / pw));
+}
+window.addEventListener('resize', fitMine);
+function renderMine() {
+  const box = $('#mine'), c = getMine();
+  if (!c) {
+    box.innerHTML = '<div class="mine mine-empty"><div><span class="next-k">Twoja wizytówka</span><p>Nie masz jeszcze swojej wizytówki.</p></div><button class="primary" id="mine-create">Utwórz wizytówkę</button></div>';
+    return;
+  }
+  box.innerHTML = `<section class="mine" aria-label="Twoja wizytówka"><div class="mine-card" style="--acc:${esc(c.accent || '#e8473f')}">${coverHTML(c, false)}</div>
+    <div class="mine-share"><div class="mine-qr" id="mine-qr" aria-label="Kod QR Twojej wizytówki"></div><p class="mine-cap">Zeskanuj, aby zobaczyć moją wizytówkę i zapisać kontakt.</p>
+    <div class="mine-act"><button class="primary" data-qr-id="${esc(c.id)}">Pokaż kod QR na pełnym ekranie</button><button id="mine-share">Udostępnij link</button><button class="back" data-edit-mine>Edytuj wizytówkę</button></div></div></section>`;
+  fitMine();
+  onlineUrl(c).then(u => { const q = $('#mine-qr'); if (q) { try { q.innerHTML = qrSvg(u); } catch (e) { q.textContent = 'Za dużo danych na kod QR'; } } }).catch(() => {});
+}
+let wlStep = 1;
+function wlGo(n) {
+  wlStep = n; $('#wl-1').hidden = n !== 1; $('#wl-2').hidden = n !== 2;
+  if (n === 2) { const m = getMine(); $('#wl-name').value = m ? m.name || '' : $('#wl-name').value; $('#wl-next').disabled = !$('#wl-name').value.trim(); setTimeout(() => $('#wl-name').focus(), 50); }
+}
+function renderWelcome() { wlGo(1); }
+$('#wl-start').onclick = () => wlGo(2);
+$('#wl-back').onclick = () => wlGo(1);
+$('#wl-skip').onclick = () => { finishOnb(); show('cards'); };
+$('#wl-name').addEventListener('input', () => { $('#wl-next').disabled = !$('#wl-name').value.trim(); });
+$('#wl-2').addEventListener('submit', ev => {
+  ev.preventDefault(); const name = $('#wl-name').value.trim(); if (!name) return;
+  let c = getMine(); if (!c) { c = newCard(); state.cards.push(c); }
+  c.name = name; c.phone = $('#wl-phone').value.trim(); c.email = $('#wl-email').value.trim();
+  setMineId(c.id); finishOnb(); currentId = c.id; save(); show('cards'); toast('Gotowe. To Twoja wizytówka.');
+});
+document.addEventListener('click', async e => {
+  const q = e.target.closest('#mine [data-qr-id]'); if (q) return showQr(q.dataset.qrId);
+  if (e.target.closest('[data-edit-mine]')) { const m = getMine(); if (m) openEditor(m.id); return; }
+  if (e.target.closest('#mine-create')) { show('welcome'); wlGo(2); return; }
+  if (e.target.closest('#btn-main')) { const c = cur(); if (c) { setMineId(c.id); toast('Ustawiono jako główną wizytówkę'); } return; }
+  if (e.target.closest('#mine-share')) {
+    const c = getMine(); if (!c) return; const url = await onlineUrl(c);
+    if (navigator.share) { try { await navigator.share({ title: c.name || 'Wizytówka', text: 'Moja wizytówka', url }); } catch (_) {} }
+    else { try { await navigator.clipboard.writeText(url); toast('Link skopiowany'); } catch (_) { prompt('Skopiuj link:', url); } }
+  }
+});
+
 /* ---------- prowadzony edytor (kroki) ---------- */
 const STEP_TITLES = ['Kim jesteś', 'Jak pracujesz', 'Kogo polecasz', 'Kogo szukasz', 'Gotowe'];
 const ROWS_STEP = 5;
@@ -209,7 +265,7 @@ function renderDone() {
   $('#done-list').innerHTML = rows.map(([n, t, v]) => `<div class="done-row"><div><b>${t}</b><span>${v}</span></div><button class="small" data-step-go="${n}">Zmień</button></div>`).join('');
 }
 function renderNext() {
-  const box = $('#next-step'), c = getCard(currentId) || state.cards[0];
+  const box = $('#next-step'), c = getMine() || getCard(currentId) || state.cards[0];
   $('#btn-new').classList.toggle('primary', !state.cards.length);
   if (!c) { box.innerHTML = ''; return; }
   const n = nextStepFor(c);
@@ -282,13 +338,17 @@ function tablePanel(cols, widths, rows, start, sought) {
 }
 const ICON_MAIL = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="1"/><path d="M2 6l10 8 10-8"/></svg>';
 const ICON_TEL = '<svg viewBox="0 0 24 24" fill="#fff"><path d="M6.6 10.8a15 15 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.6 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.250.2 2.450.6 3.600a1 1 0 01-.25 1z"/></svg>';
+function coverHTML(c, withQr) {
+  const tel = [c.phone, c.phone2].filter(Boolean).map(esc).join('<br>');
+  return `<div class="panel cover"><div class="cv-top"><div><div class="nm">${esc(c.name).replace(' ', '<br>')}</div><div class="cv-sub">${esc(c.group)}${c.city ? '<br>' + esc(c.city) : ''}${c.company ? '<br>' + esc(c.company) : ''}</div></div>
+    <div class="rt"><div class="logo">${logoHTML(getLogo(), c.accent, 26)}</div>${withQr ? '<div class="qr" data-qr>…</div>' : ''}</div></div>
+    <div class="cv-bot"><div class="ct">${tel ? ICON_TEL + '<span>' + tel + '</span>' : ''}</div><div class="ct">${c.email ? ICON_MAIL + '<span>' + esc(c.email) + '</span>' : ''}</div></div>${getLogo().referra ? '<div class="cv-ref">Referra</div>' : ''}</div>`;
+}
 function cardHTML(c, withQr) {
   const o = c.offered || [], s = c.sought || [];
   const qa = `<div class="panel"><ol class="qa">${c.qa.map((x, i) => `<li><span class="n">${i + 1}.</span><div><b>${esc(x.q)}</b><i>${esc(x.a)}</i></div></li>`).join('')}</ol></div>`;
   const tel = [c.phone, c.phone2].filter(Boolean).map(esc).join('<br>');
-  const cover = `<div class="panel cover"><div class="cv-top"><div><div class="nm">${esc(c.name).replace(' ', '<br>')}</div><div class="cv-sub">${esc(c.group)}${c.city ? '<br>' + esc(c.city) : ''}${c.company ? '<br>' + esc(c.company) : ''}</div></div>
-    <div class="rt"><div class="logo">${logoHTML(getLogo(), c.accent, 26)}</div>${withQr ? '<div class="qr" data-qr>…</div>' : ''}</div></div>
-    <div class="cv-bot"><div class="ct">${tel ? ICON_TEL + '<span>' + tel + '</span>' : ''}</div><div class="ct">${c.email ? ICON_MAIL + '<span>' + esc(c.email) + '</span>' : ''}</div></div>${getLogo().referra ? '<div class="cv-ref">Referra</div>' : ''}</div>`;
+  const cover = coverHTML(c, withQr);
   return `<div class="sheet-card" style="--acc:${esc(c.accent || '#e8473f')}">
     <div class="side"><div class="side-label">Strona A (awers)</div>${tablePanel(OFFERED_COLS, OW, o, 0)}${tablePanel(OFFERED_COLS, OW, o, 10)}${tablePanel(SOUGHT_COLS, SW, s, 0, true)}</div>
     <div class="side"><div class="side-label">Strona B (rewers)</div>${tablePanel(SOUGHT_COLS, SW, s, 10, true)}${qa}${cover}</div></div>`;
@@ -458,7 +518,8 @@ async function importFromHash() {
 }
 
 renderList();
-window.BNI = { getStep: () => step, setStep, revealRow: (k, i) => { shown[k] = Math.max(shown[k], i + 1); }, getLogo, setLogo, sanitizeLogo, logoHTML, renderPreview: () => renderPreview(), get state() { return state; }, setCurrent: id => { currentId = id; }, save, toast, uid, esc, $, $$, cur, getCard, show, renderTable, renderEditor, OFFERED_COLS, SOUGHT_COLS, MAX_ROWS, cloud: () => cloud };
+if (!/^#(c|card)=/.test(location.hash)) { let onb = true; try { onb = !!localStorage.getItem(ONB_KEY); } catch (e) {} if (!onb) show('welcome'); }
+window.BNI = { openEditor, getMine, getStep: () => step, setStep, revealRow: (k, i) => { shown[k] = Math.max(shown[k], i + 1); }, getLogo, setLogo, sanitizeLogo, logoHTML, renderPreview: () => renderPreview(), get state() { return state; }, setCurrent: id => { currentId = id; }, save, toast, uid, esc, $, $$, cur, getCard, show, renderTable, renderEditor, OFFERED_COLS, SOUGHT_COLS, MAX_ROWS, cloud: () => cloud };
 if (/^#(c|card)=/.test(location.hash) && window.BNIViewer) window.BNIViewer.run({ rest, unpack, normCard, okId, sanitizeLogo, logoHTML });
 else pull().then(() => { renderList(); if (window.BNIContacts) window.BNIContacts.onData(); return importFromHash(); });
 if (typeof module !== 'undefined') module.exports = { suggestions };
